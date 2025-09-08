@@ -1,0 +1,19 @@
+{
+  "email": "client-completo@example.com",
+  "password": "senha123",
+  "fullName": "João Silva Santos",
+  "personType": "BUSINESS",
+  "taxDocument": "12.345.678/0001-90",
+  "position": "CEO",
+  "companyName": "Silva Santos Ltda",
+  "tradeName": "Silva Corp",
+  "sector": "Tecnologia",
+  "companySize": "SMALL",
+  "website": "https://silvacorp.com.br",
+  "phone": "+5511999999999",
+  "street": "Rua das Flores, 123",
+  "city": "São Paulo",
+  "state": "SP",
+  "zipCode": "01234-567",
+  "country": "Brasil"
+}

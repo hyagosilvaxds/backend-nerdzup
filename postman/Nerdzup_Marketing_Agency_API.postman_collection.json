@@ -1,0 +1,3556 @@
+{
+  "info": {
+    "name": "Nerdzup Marketing Agency API",
+    "description": "Complete API collection for the marketing agency system with JWT authentication and role-based access control",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:4000",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', responseJson.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@nerdzup.com\",\n  \"password\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login with email and password to get JWT token"
+          }
+        },
+        {
+          "name": "Register Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"client@example.com\",\n  \"password\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register/client",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register", "client"]
+            },
+            "description": "Register a new client account (public endpoint) - Only email and password required, all other fields optional"
+          }
+        },
+        {
+          "name": "Register Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"employee@nerdzup.com\",\n  \"password\": \"senha123\",\n  \"name\": \"Maria Santos\",\n  \"position\": \"Marketing Analyst\",\n  \"department\": \"Marketing\",\n  \"phone\": \"+5511888888888\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register/employee",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register", "employee"]
+            },
+            "description": "Register a new employee (requires ADMIN or EMPLOYEE role)"
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile"]
+            },
+            "description": "Get current user profile information"
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Request password reset email"
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"reset-token-from-email\",\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Reset password using token from email"
+          }
+        },
+        {
+          "name": "Request Login Code (Passwordless)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/request-login-code",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "request-login-code"]
+            },
+            "description": "Request passwordless login code via email"
+          }
+        },
+        {
+          "name": "Verify Login Code (Passwordless)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', responseJson.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/verify-login-code",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-login-code"]
+            },
+            "description": "Verify login code and authenticate user"
+          }
+        },
+        {
+          "name": "Upload Profile Photo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/profile-photo/upload",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile-photo", "upload"]
+            },
+            "description": "Upload profile photo (accepts JPEG, PNG, GIF, WebP up to 5MB)"
+          }
+        },
+        {
+          "name": "Update Profile Photo URL",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profilePhoto\": \"https://example.com/photo.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/profile-photo",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile-photo"]
+            },
+            "description": "Update profile photo with external URL"
+          }
+        },
+        {
+          "name": "Remove Profile Photo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/profile-photo/remove",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile-photo", "remove"]
+            },
+            "description": "Remove current profile photo"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "Create Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newemployee@nerdzup.com\",\n  \"password\": \"senha123\",\n  \"name\": \"Carlos Oliveira\",\n  \"position\": \"Senior Designer\",\n  \"department\": \"Creative\",\n  \"phone\": \"+5511777777777\",\n  \"salary\": 5000.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/employees",
+              "host": ["{{base_url}}"],
+              "path": ["employees"]
+            },
+            "description": "Create new employee (requires ADMIN role and WRITE_EMPLOYEES permission)"
+          }
+        },
+        {
+          "name": "Get All Employees",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/employees",
+              "host": ["{{base_url}}"],
+              "path": ["employees"]
+            },
+            "description": "Get list of all employees (requires READ_EMPLOYEES permission)"
+          }
+        },
+        {
+          "name": "Get Employee by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/employees/{{employee_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["employees", "{{employee_id}}"]
+            },
+            "description": "Get employee details by ID (requires READ_EMPLOYEES permission)"
+          }
+        },
+        {
+          "name": "Update Employee",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Carlos Oliveira Junior\",\n  \"position\": \"Lead Designer\",\n  \"salary\": 6000.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/employees/{{employee_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["employees", "{{employee_id}}"]
+            },
+            "description": "Update employee information (requires ADMIN role and WRITE_EMPLOYEES permission)"
+          }
+        },
+        {
+          "name": "Delete Employee",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/employees/{{employee_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["employees", "{{employee_id}}"]
+            },
+            "description": "Delete employee (requires ADMIN role and DELETE_EMPLOYEES permission)"
+          }
+        },
+        {
+          "name": "Get Available Permissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/employees/permissions",
+              "host": ["{{base_url}}"],
+              "path": ["employees", "permissions"]
+            },
+            "description": "Get list of all available permissions"
+          }
+        },
+        {
+          "name": "Assign Permissions to Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\n    \"READ_CLIENTS\",\n    \"WRITE_CLIENTS\",\n    \"READ_CAMPAIGNS\",\n    \"WRITE_CAMPAIGNS\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/employees/{{employee_id}}/permissions",
+              "host": ["{{base_url}}"],
+              "path": ["employees", "{{employee_id}}", "permissions"]
+            },
+            "description": "Assign permissions to employee (requires ADMIN role and MANAGE_PERMISSIONS permission)"
+          }
+        },
+        {
+          "name": "Remove Permission from Employee",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/employees/{{employee_id}}/permissions?permission=READ_CLIENTS",
+              "host": ["{{base_url}}"],
+              "path": ["employees", "{{employee_id}}", "permissions"],
+              "query": [
+                {
+                  "key": "permission",
+                  "value": "READ_CLIENTS"
+                }
+              ]
+            },
+            "description": "Remove specific permission from employee (requires ADMIN role and MANAGE_PERMISSIONS permission)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "Create Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newclient@example.com\",\n  \"password\": \"senha123\",\n  \"fullName\": \"Ana Costa Oliveira\",\n  \"phone\": \"+5511666666666\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/clients",
+              "host": ["{{base_url}}"],
+              "path": ["clients"]
+            },
+            "description": "Create new client (requires ADMIN/EMPLOYEE role and WRITE_CLIENTS permission) - Only email and password required, all other fields optional"
+          }
+        },
+        {
+          "name": "Get All Clients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/clients",
+              "host": ["{{base_url}}"],
+              "path": ["clients"]
+            },
+            "description": "Get list of all clients (requires READ_CLIENTS permission)"
+          }
+        },
+        {
+          "name": "Get Client by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/clients/{{client_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["clients", "{{client_id}}"]
+            },
+            "description": "Get client details by ID (requires READ_CLIENTS permission or client owns the data)"
+          }
+        },
+        {
+          "name": "Update Client",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ana Costa Silva\",\n  \"position\": \"Diretora Executiva\",\n  \"tradeName\": \"Costa & Silva Enterprises\",\n  \"sector\": \"Consultoria Empresarial\",\n  \"companySize\": \"MEDIUM\",\n  \"phone\": \"+5511999999999\",\n  \"website\": \"https://costaesilva.com.br\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/clients/{{client_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["clients", "{{client_id}}"]
+            },
+            "description": "Update client information (requires WRITE_CLIENTS permission or client owns the data)"
+          }
+        },
+        {
+          "name": "Delete Client",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/clients/{{client_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["clients", "{{client_id}}"]
+            },
+            "description": "Delete client (requires ADMIN role and DELETE_CLIENTS permission)"
+          }
+        },
+        {
+          "name": "Toggle Client Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/clients/{{client_id}}/toggle-status",
+              "host": ["{{base_url}}"],
+              "path": ["clients", "{{client_id}}", "toggle-status"]
+            },
+            "description": "Toggle client active/inactive status (requires WRITE_CLIENTS permission)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "File Upload",
+      "item": [
+        {
+          "name": "Upload File",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload/file?destination=documents",
+              "host": ["{{base_url}}"],
+              "path": ["upload", "file"],
+              "query": [
+                {
+                  "key": "destination",
+                  "value": "documents",
+                  "description": "Optional: 'documents' or 'images'"
+                }
+              ]
+            },
+            "description": "Upload any file (automatically categorized by MIME type). Supports images, PDFs, Word docs, Excel sheets, text files. Max size: 10MB. Returns file path and URL."
+          }
+        },
+        {
+          "name": "Upload Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload/image",
+              "host": ["{{base_url}}"],
+              "path": ["upload", "image"]
+            },
+            "description": "Upload image files only (JPEG, PNG, GIF, WebP). Max size: 10MB. Files are stored in uploads/images/ directory."
+          }
+        },
+        {
+          "name": "Upload Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "document",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload/document",
+              "host": ["{{base_url}}"],
+              "path": ["upload", "document"]
+            },
+            "description": "Upload document files only (PDF, Word, Excel, text files). Max size: 10MB. Files are stored in uploads/documents/ directory."
+          }
+        }
+      ]
+    },
+    {
+      "name": "SMTP Configuration",
+      "item": [
+        {
+          "name": "Create SMTP Configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gmail Configuration\",\n  \"host\": \"smtp.gmail.com\",\n  \"port\": 587,\n  \"secure\": false,\n  \"user\": \"your-email@gmail.com\",\n  \"password\": \"your-app-password\",\n  \"fromName\": \"Nerdzup Marketing\",\n  \"fromEmail\": \"noreply@nerdzup.com\",\n  \"isActive\": true,\n  \"isDefault\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/smtp",
+              "host": ["{{base_url}}"],
+              "path": ["smtp"]
+            },
+            "description": "Create new SMTP configuration (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get All SMTP Configurations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/smtp",
+              "host": ["{{base_url}}"],
+              "path": ["smtp"]
+            },
+            "description": "Get list of all SMTP configurations (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get Active SMTP Configuration",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/smtp/active",
+              "host": ["{{base_url}}"],
+              "path": ["smtp", "active"]
+            },
+            "description": "Get currently active SMTP configuration (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get SMTP Configuration by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/smtp/{{smtp_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["smtp", "{{smtp_id}}"]
+            },
+            "description": "Get SMTP configuration by ID (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Update SMTP Configuration",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromName\": \"Nerdzup Agency\",\n  \"isActive\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/smtp/{{smtp_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["smtp", "{{smtp_id}}"]
+            },
+            "description": "Update SMTP configuration (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Delete SMTP Configuration",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/smtp/{{smtp_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["smtp", "{{smtp_id}}"]
+            },
+            "description": "Delete SMTP configuration (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Activate SMTP Configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/smtp/{{smtp_id}}/activate",
+              "host": ["{{base_url}}"],
+              "path": ["smtp", "{{smtp_id}}", "activate"]
+            },
+            "description": "Set SMTP configuration as active (deactivates others) (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Set as Default SMTP Configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/smtp/{{smtp_id}}/set-default",
+              "host": ["{{base_url}}"],
+              "path": ["smtp", "{{smtp_id}}", "set-default"]
+            },
+            "description": "Set SMTP configuration as default (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Test SMTP Configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"testEmail\": \"test@example.com\",\n  \"subject\": \"Teste SMTP\",\n  \"message\": \"Esta é uma mensagem de teste para verificar a configuração SMTP.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/smtp/{{smtp_id}}/test",
+              "host": ["{{base_url}}"],
+              "path": ["smtp", "{{smtp_id}}", "test"]
+            },
+            "description": "Test SMTP configuration by sending a test email (requires ADMIN role)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Email Templates",
+      "item": [
+        {
+          "name": "Create Email Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"welcome\",\n  \"displayName\": \"Email de Boas-vindas\",\n  \"subject\": \"Bem-vindo à {{companyName}}!\",\n  \"htmlContent\": \"<h1>Olá {{name}}!</h1><p>Seja bem-vindo à nossa plataforma. Estamos muito felizes em tê-lo conosco!</p><p>Acesse: <a href='{{frontendUrl}}'>{{frontendUrl}}</a></p>\",\n  \"textContent\": \"Olá {{name}}! Seja bem-vindo à nossa plataforma. Acesse: {{frontendUrl}}\",\n  \"variables\": [\"name\", \"companyName\", \"frontendUrl\"],\n  \"category\": \"auth\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/email-templates",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates"]
+            },
+            "description": "Create new email template (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get All Email Templates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/email-templates?category=auth",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates"],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "auth",
+                  "description": "Optional filter by category"
+                }
+              ]
+            },
+            "description": "Get list of all email templates with optional category filter"
+          }
+        },
+        {
+          "name": "Get Template Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/email-templates/categories",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates", "categories"]
+            },
+            "description": "Get list of all template categories with counts"
+          }
+        },
+        {
+          "name": "Get Template by Name",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/email-templates/by-name/welcome",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates", "by-name", "welcome"]
+            },
+            "description": "Get email template by unique name"
+          }
+        },
+        {
+          "name": "Get Template by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/email-templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates", "{{template_id}}"]
+            },
+            "description": "Get email template by ID"
+          }
+        },
+        {
+          "name": "Update Email Template",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Bem-vindo à {{companyName}} - Atualizado!\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/email-templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates", "{{template_id}}"]
+            },
+            "description": "Update email template (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Delete Email Template",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/email-templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates", "{{template_id}}"]
+            },
+            "description": "Delete email template (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Activate Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/email-templates/{{template_id}}/activate",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates", "{{template_id}}", "activate"]
+            },
+            "description": "Activate email template (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Deactivate Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/email-templates/{{template_id}}/deactivate",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates", "{{template_id}}", "deactivate"]
+            },
+            "description": "Deactivate email template (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Render Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variables\": {\n    \"name\": \"João Silva\",\n    \"companyName\": \"Nerdzup Marketing\",\n    \"frontendUrl\": \"https://app.nerdzup.com\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/email-templates/{{template_id}}/render",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates", "{{template_id}}", "render"]
+            },
+            "description": "Render template with provided variables"
+          }
+        },
+        {
+          "name": "Render Template by Name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variables\": {\n    \"name\": \"Maria Santos\",\n    \"companyName\": \"Nerdzup Marketing\",\n    \"frontendUrl\": \"https://app.nerdzup.com\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/email-templates/render-by-name/welcome",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates", "render-by-name", "welcome"]
+            },
+            "description": "Render template by name with provided variables"
+          }
+        },
+        {
+          "name": "Preview Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variables\": {\n    \"name\": \"Preview User\",\n    \"companyName\": \"Nerdzup Marketing\",\n    \"frontendUrl\": \"https://app.nerdzup.com\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/email-templates/{{template_id}}/preview",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates", "{{template_id}}", "preview"]
+            },
+            "description": "Preview template rendering with variables for testing purposes"
+          }
+        },
+        {
+          "name": "Validate Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"htmlContent\": \"<h1>Hello {{name}}!</h1><p>Welcome to {{companyName}}!</p>\",\n  \"textContent\": \"Hello {{name}}! Welcome to {{companyName}}!\",\n  \"variables\": [\"name\", \"companyName\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/email-templates/validate",
+              "host": ["{{base_url}}"],
+              "path": ["email-templates", "validate"]
+            },
+            "description": "Validate template syntax before saving (requires ADMIN role)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lead Forms",
+      "item": [
+        {
+          "name": "Create Lead Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"contact-form\",\n  \"displayName\": \"Formulário de Contato\",\n  \"description\": \"Formulário para captura de leads interessados em nossos serviços\",\n  \"initialText\": \"Olá! Estamos aqui para ajudá-lo. Por favor, preencha as informações abaixo:\",\n  \"allowMultipleSubmissions\": false,\n  \"steps\": [\n    {\n      \"title\": \"Informações Básicas\",\n      \"description\": \"Conte-nos sobre você\",\n      \"isRequired\": true,\n      \"inputs\": [\n        {\n          \"inputKey\": \"name\",\n          \"label\": \"Nome completo\",\n          \"inputType\": \"TEXT\",\n          \"placeholder\": \"Digite seu nome completo\",\n          \"isRequired\": true,\n          \"order\": 1,\n          \"options\": [],\n          \"helpText\": \"Por favor, informe seu nome completo\"\n        },\n        {\n          \"inputKey\": \"email\",\n          \"label\": \"E-mail\",\n          \"inputType\": \"EMAIL\",\n          \"placeholder\": \"seu@email.com\",\n          \"isRequired\": true,\n          \"order\": 2,\n          \"options\": [],\n          \"helpText\": \"Utilizaremos este e-mail para entrar em contato\"\n        }\n      ]\n    },\n    {\n      \"title\": \"Interesse\",\n      \"description\": \"Qual serviço te interessa?\",\n      \"isRequired\": true,\n      \"inputs\": [\n        {\n          \"inputKey\": \"service\",\n          \"label\": \"Serviço de interesse\",\n          \"inputType\": \"SELECT_3\",\n          \"isRequired\": true,\n          \"order\": 1,\n          \"options\": [\"Marketing Digital\", \"Desenvolvimento Web\", \"Consultoria\"]\n        }\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/lead-forms",
+              "host": ["{{base_url}}"],
+              "path": ["lead-forms"]
+            },
+            "description": "Create a new lead form configuration (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get All Lead Forms",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/lead-forms?activeOnly=true",
+              "host": ["{{base_url}}"],
+              "path": ["lead-forms"],
+              "query": [
+                {
+                  "key": "activeOnly",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Get all lead forms (admin only)"
+          }
+        },
+        {
+          "name": "Get Lead Form by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/lead-forms/{{form_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["lead-forms", "{{form_id}}"]
+            },
+            "description": "Get lead form by ID"
+          }
+        },
+        {
+          "name": "Get Lead Form by Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/lead-forms/name/contact-form",
+              "host": ["{{base_url}}"],
+              "path": ["lead-forms", "name", "contact-form"]
+            },
+            "description": "Get active lead form by name (public endpoint for form rendering)"
+          }
+        },
+        {
+          "name": "Update Lead Form",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Formulário de Contato Atualizado\",\n  \"description\": \"Formulário atualizado para captura de leads\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/lead-forms/{{form_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["lead-forms", "{{form_id}}"]
+            },
+            "description": "Update lead form configuration (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Delete Lead Form",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/lead-forms/{{form_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["lead-forms", "{{form_id}}"]
+            },
+            "description": "Delete lead form (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Activate Lead Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/lead-forms/{{form_id}}/activate",
+              "host": ["{{base_url}}"],
+              "path": ["lead-forms", "{{form_id}}", "activate"]
+            },
+            "description": "Activate lead form (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Deactivate Lead Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/lead-forms/{{form_id}}/deactivate",
+              "host": ["{{base_url}}"],
+              "path": ["lead-forms", "{{form_id}}", "deactivate"]
+            },
+            "description": "Deactivate lead form (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get Form Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/lead-forms/{{form_id}}/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["lead-forms", "{{form_id}}", "analytics"]
+            },
+            "description": "Get form analytics and conversion stats (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Duplicate Lead Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"contact-form-v2\",\n  \"displayName\": \"Formulário de Contato v2\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/lead-forms/{{form_id}}/duplicate",
+              "host": ["{{base_url}}"],
+              "path": ["lead-forms", "{{form_id}}", "duplicate"]
+            },
+            "description": "Duplicate existing lead form (requires ADMIN role)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lead Submissions",
+      "item": [
+        {
+          "name": "Start Form Submission",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formId\": \"contact-form\",\n  \"ipAddress\": \"192.168.1.100\",\n  \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/lead-submissions/start",
+              "host": ["{{base_url}}"],
+              "path": ["lead-submissions", "start"]
+            },
+            "description": "Start a new form submission session (public endpoint)"
+          }
+        },
+        {
+          "name": "Submit Form Responses",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"formId\": \"{{form_id}}\",\n  \"submissionId\": \"{{submission_id}}\",\n  \"email\": \"lead@example.com\",\n  \"responses\": [\n    {\n      \"stepId\": \"{{step_id}}\",\n      \"inputKey\": \"name\",\n      \"value\": \"João Silva\"\n    },\n    {\n      \"stepId\": \"{{step_id}}\",\n      \"inputKey\": \"email\",\n      \"value\": \"joao@example.com\"\n    },\n    {\n      \"stepId\": \"{{step_id_2}}\",\n      \"inputKey\": \"service\",\n      \"value\": \"Marketing Digital\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/lead-submissions/submit",
+              "host": ["{{base_url}}"],
+              "path": ["lead-submissions", "submit"]
+            },
+            "description": "Submit form responses (can be partial - public endpoint)"
+          }
+        },
+        {
+          "name": "Complete Form Submission",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"submissionId\": \"{{submission_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/lead-submissions/complete",
+              "host": ["{{base_url}}"],
+              "path": ["lead-submissions", "complete"]
+            },
+            "description": "Complete and validate form submission (public endpoint)"
+          }
+        },
+        {
+          "name": "Get All Submissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/lead-submissions?formId={{form_id}}&completedOnly=true&dateFrom=2024-01-01&dateTo=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["lead-submissions"],
+              "query": [
+                {
+                  "key": "formId",
+                  "value": "{{form_id}}"
+                },
+                {
+                  "key": "completedOnly",
+                  "value": "true"
+                },
+                {
+                  "key": "email",
+                  "value": "test@example.com",
+                  "disabled": true
+                },
+                {
+                  "key": "dateFrom",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "dateTo",
+                  "value": "2024-12-31"
+                }
+              ]
+            },
+            "description": "Get filtered list of form submissions (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get Submission Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/lead-submissions/stats?formId={{form_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["lead-submissions", "stats"],
+              "query": [
+                {
+                  "key": "formId",
+                  "value": "{{form_id}}"
+                }
+              ]
+            },
+            "description": "Get submission statistics (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get Submission by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/lead-submissions/{{submission_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["lead-submissions", "{{submission_id}}"]
+            },
+            "description": "Get detailed submission by ID (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Delete Submission",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/lead-submissions/{{submission_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["lead-submissions", "{{submission_id}}"]
+            },
+            "description": "Delete form submission (requires ADMIN role)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Service Categories",
+      "item": [
+        {
+          "name": "Create Service Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"marketing-digital\",\n  \"displayName\": \"Marketing Digital\",\n  \"description\": \"Serviços focados em estratégias de marketing digital e presença online\",\n  \"iconUrl\": \"https://example.com/icons/marketing-digital.svg\",\n  \"color\": \"#FF6B35\",\n  \"isActive\": true,\n  \"order\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/service-categories",
+              "host": ["{{base_url}}"],
+              "path": ["service-categories"]
+            },
+            "description": "Create a new service category (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get All Service Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/service-categories?activeOnly=true&search=marketing",
+              "host": ["{{base_url}}"],
+              "path": ["service-categories"],
+              "query": [
+                {
+                  "key": "activeOnly",
+                  "value": "true"
+                },
+                {
+                  "key": "search",
+                  "value": "marketing",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get all service categories with optional filters"
+          }
+        },
+        {
+          "name": "Get Service Category Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/service-categories/stats",
+              "host": ["{{base_url}}"],
+              "path": ["service-categories", "stats"]
+            },
+            "description": "Get service categories statistics (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get Service Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/service-categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["service-categories", "{{category_id}}"]
+            },
+            "description": "Get service category by ID with its services"
+          }
+        },
+        {
+          "name": "Get Service Category by Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/service-categories/name/marketing-digital",
+              "host": ["{{base_url}}"],
+              "path": ["service-categories", "name", "marketing-digital"]
+            },
+            "description": "Get service category by name (public endpoint)"
+          }
+        },
+        {
+          "name": "Update Service Category",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Marketing Digital Atualizado\",\n  \"description\": \"Serviços de marketing digital com foco em ROI\",\n  \"color\": \"#FF8C42\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/service-categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["service-categories", "{{category_id}}"]
+            },
+            "description": "Update service category (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Delete Service Category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/service-categories/{{category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["service-categories", "{{category_id}}"]
+            },
+            "description": "Delete service category (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Activate Service Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/service-categories/{{category_id}}/activate",
+              "host": ["{{base_url}}"],
+              "path": ["service-categories", "{{category_id}}", "activate"]
+            },
+            "description": "Activate service category (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Deactivate Service Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/service-categories/{{category_id}}/deactivate",
+              "host": ["{{base_url}}"],
+              "path": ["service-categories", "{{category_id}}", "deactivate"]
+            },
+            "description": "Deactivate service category (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Reorder Service Categories",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryIds\": [\"{{category_id_1}}\", \"{{category_id_2}}\", \"{{category_id_3}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/service-categories/reorder",
+              "host": ["{{base_url}}"],
+              "path": ["service-categories", "reorder"]
+            },
+            "description": "Reorder service categories (requires ADMIN role)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "Create Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"gestao-redes-sociais\",\n  \"displayName\": \"Gestão de Redes Sociais\",\n  \"description\": \"Gestão completa das suas redes sociais com estratégia personalizada, criação de conteúdo, postagens diárias e relatórios de performance.\",\n  \"shortDescription\": \"Gestão completa de redes sociais com estratégia personalizada\",\n  \"categoryId\": \"{{category_id}}\",\n  \"credits\": 500,\n  \"estimatedDays\": 30,\n  \"difficulty\": \"INTERMEDIARIO\",\n  \"iconUrl\": \"https://example.com/icons/social-media.svg\",\n  \"features\": [\n    \"Estratégia personalizada\",\n    \"Criação de conteúdo\",\n    \"Postagens diárias\",\n    \"Relatórios mensais\",\n    \"Análise de concorrência\"\n  ],\n  \"benefits\": [\n    \"Maior engajamento\",\n    \"Crescimento orgânico\",\n    \"Fortalecimento da marca\",\n    \"Geração de leads qualificados\"\n  ],\n  \"isActive\": true,\n  \"isFeatured\": false,\n  \"tags\": [\"redes sociais\", \"conteúdo\", \"engajamento\"],\n  \"order\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/services",
+              "host": ["{{base_url}}"],
+              "path": ["services"]
+            },
+            "description": "Create a new service (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get All Services",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/services?categoryId={{category_id}}&difficulty=INTERMEDIARIO&minCredits=100&maxCredits=1000&activeOnly=true&page=1&limit=20&sortBy=credits&sortOrder=asc",
+              "host": ["{{base_url}}"],
+              "path": ["services"],
+              "query": [
+                {
+                  "key": "categoryId",
+                  "value": "{{category_id}}",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "gestão",
+                  "disabled": true
+                },
+                {
+                  "key": "difficulty",
+                  "value": "INTERMEDIARIO",
+                  "disabled": true
+                },
+                {
+                  "key": "minCredits",
+                  "value": "100",
+                  "disabled": true
+                },
+                {
+                  "key": "maxCredits",
+                  "value": "1000",
+                  "disabled": true
+                },
+                {
+                  "key": "minRating",
+                  "value": "4",
+                  "disabled": true
+                },
+                {
+                  "key": "activeOnly",
+                  "value": "true"
+                },
+                {
+                  "key": "featuredOnly",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "tags",
+                  "value": "redes sociais,engajamento",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "credits",
+                  "disabled": true
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "asc",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get all services with advanced filtering and pagination"
+          }
+        },
+        {
+          "name": "Get Featured Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services/featured?limit=6",
+              "host": ["{{base_url}}"],
+              "path": ["services", "featured"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "6"
+                }
+              ]
+            },
+            "description": "Get featured services (public endpoint)"
+          }
+        },
+        {
+          "name": "Get Popular Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services/popular?limit=6",
+              "host": ["{{base_url}}"],
+              "path": ["services", "popular"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "6"
+                }
+              ]
+            },
+            "description": "Get popular services by rating (public endpoint)"
+          }
+        },
+        {
+          "name": "Get Services by Difficulty",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services/difficulty/BASICO",
+              "host": ["{{base_url}}"],
+              "path": ["services", "difficulty", "BASICO"]
+            },
+            "description": "Get services by difficulty level (public endpoint)"
+          }
+        },
+        {
+          "name": "Get Services Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/services/stats",
+              "host": ["{{base_url}}"],
+              "path": ["services", "stats"]
+            },
+            "description": "Get services statistics (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Get Service by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services/{{service_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["services", "{{service_id}}"]
+            },
+            "description": "Get service details by ID (public endpoint)"
+          }
+        },
+        {
+          "name": "Get Service by Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/services/name/gestao-redes-sociais",
+              "host": ["{{base_url}}"],
+              "path": ["services", "name", "gestao-redes-sociais"]
+            },
+            "description": "Get service by name (public endpoint for service details page)"
+          }
+        },
+        {
+          "name": "Update Service",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Gestão Avançada de Redes Sociais\",\n  \"credits\": 600,\n  \"estimatedDays\": 25,\n  \"features\": [\n    \"Estratégia personalizada\",\n    \"Criação de conteúdo premium\",\n    \"Postagens diárias\",\n    \"Stories e Reels\",\n    \"Relatórios semanais\",\n    \"Análise de concorrência\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/services/{{service_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["services", "{{service_id}}"]
+            },
+            "description": "Update service (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Delete Service",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/services/{{service_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["services", "{{service_id}}"]
+            },
+            "description": "Delete service (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Activate Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/services/{{service_id}}/activate",
+              "host": ["{{base_url}}"],
+              "path": ["services", "{{service_id}}", "activate"]
+            },
+            "description": "Activate service (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Deactivate Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/services/{{service_id}}/deactivate",
+              "host": ["{{base_url}}"],
+              "path": ["services", "{{service_id}}", "deactivate"]
+            },
+            "description": "Deactivate service (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Toggle Featured Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/services/{{service_id}}/toggle-featured",
+              "host": ["{{base_url}}"],
+              "path": ["services", "{{service_id}}", "toggle-featured"]
+            },
+            "description": "Toggle service featured status (requires ADMIN role)"
+          }
+        },
+        {
+          "name": "Rate Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/services/{{service_id}}/rating",
+              "host": ["{{base_url}}"],
+              "path": ["services", "{{service_id}}", "rating"]
+            },
+            "description": "Add rating to service (public endpoint)"
+          }
+        },
+        {
+          "name": "Reorder Services in Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceIds\": [\"{{service_id_1}}\", \"{{service_id_2}}\", \"{{service_id_3}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/services/category/{{category_id}}/reorder",
+              "host": ["{{base_url}}"],
+              "path": ["services", "category", "{{category_id}}", "reorder"]
+            },
+            "description": "Reorder services within a category (requires ADMIN role)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Create Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Criação de Logo\",\n  \"description\": \"Desenvolver logo profissional para a marca\",\n  \"serviceId\": \"{{service_id}}\",\n  \"clientId\": \"{{client_id}}\",\n  \"campaignId\": \"{{campaign_id}}\",\n  \"priority\": \"ALTA\",\n  \"dueDate\": \"2024-09-15T23:59:59.000Z\",\n  \"employeeIds\": [\"{{employee_id_1}}\", \"{{employee_id_2}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks",
+              "host": ["{{base_url}}"],
+              "path": ["tasks"]
+            },
+            "description": "Create new task (requires ADMIN or EMPLOYEE role)"
+          }
+        },
+        {
+          "name": "Get All Tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tasks?page=1&limit=20&status=ANDAMENTO&priority=ALTA",
+              "host": ["{{base_url}}"],
+              "path": ["tasks"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "ANDAMENTO"
+                },
+                {
+                  "key": "priority",
+                  "value": "ALTA"
+                },
+                {
+                  "key": "clientId",
+                  "value": "{{client_id}}",
+                  "disabled": true
+                },
+                {
+                  "key": "employeeId",
+                  "value": "{{employee_id}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get tasks with filtering and pagination"
+          }
+        },
+        {
+          "name": "Get Kanban Board",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tasks/kanban?clientId={{client_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "kanban"],
+              "query": [
+                {
+                  "key": "clientId",
+                  "value": "{{client_id}}"
+                },
+                {
+                  "key": "employeeId",
+                  "value": "{{employee_id}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get tasks organized by status (Kanban board format)"
+          }
+        },
+        {
+          "name": "Get Task Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tasks/stats",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "stats"],
+              "query": [
+                {
+                  "key": "clientId",
+                  "value": "{{client_id}}",
+                  "disabled": true
+                },
+                {
+                  "key": "employeeId",
+                  "value": "{{employee_id}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get task statistics and metrics"
+          }
+        },
+        {
+          "name": "Get Task by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}"]
+            },
+            "description": "Get detailed task information"
+          }
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Logo Atualizado\",\n  \"description\": \"Logo com novas especificações\",\n  \"priority\": \"URGENTE\",\n  \"progress\": 75,\n  \"dueDate\": \"2024-09-20T23:59:59.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}"]
+            },
+            "description": "Update task details (requires ADMIN or EMPLOYEE role)"
+          }
+        },
+        {
+          "name": "Update Task Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REVISAO\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "status"]
+            },
+            "description": "Update task status (Kanban toggle)"
+          }
+        },
+        {
+          "name": "Update Task Progress",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"progress\": 85\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/progress",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "progress"]
+            },
+            "description": "Update task progress percentage (0-100%)"
+          }
+        },
+        {
+          "name": "Assign Employees to Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeIds\": [\"{{employee_id_1}}\", \"{{employee_id_2}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/assign",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "assign"]
+            },
+            "description": "Assign employees to task (requires ADMIN or EMPLOYEE role)"
+          }
+        },
+        {
+          "name": "Add Comment to Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Logo está ficando ótimo! Apenas alguns ajustes na tipografia.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/comments",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "comments"]
+            },
+            "description": "Add comment to task (clients and employees can comment)"
+          }
+        },
+        {
+          "name": "Add Inspiration File",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "description",
+                  "value": "Referência de design para o logo",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/files/inspiration",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "files", "inspiration"]
+            },
+            "description": "Upload inspiration file (clients can upload inspirations)"
+          }
+        },
+        {
+          "name": "Add Deliverable File",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "description",
+                  "value": "Primeira versão do logo",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/files/deliverable",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "files", "deliverable"]
+            },
+            "description": "Upload deliverable file (requires ADMIN or EMPLOYEE role)"
+          }
+        },
+        {
+          "name": "Add File by URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"logo-final.png\",\n  \"fileUrl\": \"https://example.com/files/logo-final.png\",\n  \"fileType\": \"DELIVERABLE\",\n  \"description\": \"Logo finalizado\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/files/url",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "files", "url"]
+            },
+            "description": "Add file by external URL"
+          }
+        },
+        {
+          "name": "Remove File from Task",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}", "files", "{{file_id}}"]
+            },
+            "description": "Remove file from task (only uploader or admin can remove)"
+          }
+        },
+        {
+          "name": "Delete Task",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tasks/{{task_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", "{{task_id}}"]
+            },
+            "description": "Delete task (requires ADMIN or EMPLOYEE role)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Billing & Credits",
+      "item": [
+        {
+          "name": "Subscription Plans",
+          "item": [
+            {
+              "name": "Create Subscription Plan",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Basic Plan\",\n  \"displayName\": \"Basic Marketing Plan\",\n  \"description\": \"Perfect for small businesses\",\n  \"price\": 99.90,\n  \"monthlyCredits\": 1000,\n  \"features\": [\"Email Marketing\", \"Social Media Management\"],\n  \"order\": 1,\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/billing/subscription-plans",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "subscription-plans"]
+                },
+                "description": "Create new subscription plan (ADMIN only)"
+              }
+            },
+            {
+              "name": "Get All Subscription Plans",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/subscription-plans",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "subscription-plans"],
+                  "query": [
+                    {
+                      "key": "includeInactive",
+                      "value": "false",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get all subscription plans (active only by default)"
+              }
+            },
+            {
+              "name": "Get Subscription Plan by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/subscription-plans/{{plan_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "subscription-plans", "{{plan_id}}"]
+                },
+                "description": "Get subscription plan details (ADMIN only)"
+              }
+            },
+            {
+              "name": "Update Subscription Plan",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"price\": 119.90,\n  \"monthlyCredits\": 1200\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/billing/subscription-plans/{{plan_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "subscription-plans", "{{plan_id}}"]
+                },
+                "description": "Update subscription plan (ADMIN only)"
+              }
+            },
+            {
+              "name": "Delete Subscription Plan",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/subscription-plans/{{plan_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "subscription-plans", "{{plan_id}}"]
+                },
+                "description": "Delete subscription plan (ADMIN only)"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Credit Packages",
+          "item": [
+            {
+              "name": "Create Credit Package",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Extra Credits 500\",\n  \"displayName\": \"500 Extra Credits\",\n  \"description\": \"Boost your monthly allowance\",\n  \"credits\": 500,\n  \"price\": 29.90,\n  \"bonusCredits\": 50,\n  \"order\": 1,\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/billing/credit-packages",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "credit-packages"]
+                },
+                "description": "Create credit package (ADMIN only)"
+              }
+            },
+            {
+              "name": "Get All Credit Packages",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/credit-packages",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "credit-packages"]
+                },
+                "description": "Get all credit packages (active only by default)"
+              }
+            },
+            {
+              "name": "Get Credit Package by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/credit-packages/{{package_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "credit-packages", "{{package_id}}"]
+                },
+                "description": "Get credit package details"
+              }
+            },
+            {
+              "name": "Update Credit Package",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"price\": 34.90,\n  \"bonusCredits\": 75\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/billing/credit-packages/{{package_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "credit-packages", "{{package_id}}"]
+                },
+                "description": "Update credit package (ADMIN only)"
+              }
+            },
+            {
+              "name": "Delete Credit Package",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/credit-packages/{{package_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "credit-packages", "{{package_id}}"]
+                },
+                "description": "Delete credit package (ADMIN only)"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Client Wallet",
+          "item": [
+            {
+              "name": "Get My Wallet",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/wallet",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "wallet"]
+                },
+                "description": "Get current user's wallet balance (CLIENT only)"
+              }
+            },
+            {
+              "name": "Get Client Wallet",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/wallet/{{client_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "wallet", "{{client_id}}"]
+                },
+                "description": "Get specific client wallet (ADMIN/EMPLOYEE only)"
+              }
+            },
+            {
+              "name": "Update Client Credits",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"credits\": 100,\n  \"description\": \"Bonus credits for excellent feedback\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/billing/wallet/{{client_id}}/credits",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "wallet", "{{client_id}}", "credits"]
+                },
+                "description": "Add or remove credits from client wallet (ADMIN only)"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Subscriptions",
+          "item": [
+            {
+              "name": "Create Subscription",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"planId\": \"{{plan_id}}\",\n  \"paymentMethod\": \"CREDIT_CARD\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/billing/subscriptions",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "subscriptions"]
+                },
+                "description": "Create subscription for current client"
+              }
+            },
+            {
+              "name": "Get My Subscriptions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/subscriptions",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "subscriptions"]
+                },
+                "description": "Get current client's subscriptions"
+              }
+            },
+            {
+              "name": "Get Client Subscriptions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/subscriptions/{{client_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "subscriptions", "{{client_id}}"]
+                },
+                "description": "Get specific client subscriptions (ADMIN/EMPLOYEE only)"
+              }
+            },
+            {
+              "name": "Cancel Subscription",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/subscriptions/{{subscription_id}}/cancel",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "subscriptions", "{{subscription_id}}", "cancel"]
+                },
+                "description": "Cancel subscription"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transactions",
+          "item": [
+            {
+              "name": "Get All Transactions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "transactions"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "disabled": true
+                    },
+                    {
+                      "key": "clientId",
+                      "value": "{{client_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "type",
+                      "value": "SUBSCRIPTION_PAYMENT",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get all transactions (ADMIN/EMPLOYEE only)"
+              }
+            },
+            {
+              "name": "Get My Transactions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/transactions/my",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "transactions", "my"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get current client's transactions"
+              }
+            },
+            {
+              "name": "Get Transaction by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/transactions/{{transaction_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "transactions", "{{transaction_id}}"]
+                },
+                "description": "Get transaction details"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Client Credit Stats",
+          "item": [
+            {
+              "name": "Get My Credit Stats",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/my-stats",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "my-stats"]
+                },
+                "description": "Get credit stats for current client (CLIENT only)"
+              }
+            },
+            {
+              "name": "Get My Transaction History",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/my-history",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "my-history"],
+                  "query": [
+                    {
+                      "key": "months",
+                      "value": "3",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get transaction history for current client (CLIENT only)"
+              }
+            },
+            {
+              "name": "Get My Usage Chart",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/my-usage-chart",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "my-usage-chart"],
+                  "query": [
+                    {
+                      "key": "months",
+                      "value": "6",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get monthly usage chart for current client (CLIENT only)"
+              }
+            },
+            {
+              "name": "Get My Service Usage",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/my-service-usage",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "my-service-usage"],
+                  "query": [
+                    {
+                      "key": "months",
+                      "value": "1",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get service usage breakdown for current client (CLIENT only)"
+              }
+            },
+            {
+              "name": "Get Client Stats (Admin/Employee)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/client-stats/{{client_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "client-stats", "{{client_id}}"]
+                },
+                "description": "Get credit stats for specific client (ADMIN/EMPLOYEE only)"
+              }
+            },
+            {
+              "name": "Get Client History (Admin/Employee)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/client-history/{{client_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "client-history", "{{client_id}}"],
+                  "query": [
+                    {
+                      "key": "months",
+                      "value": "3",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get transaction history for specific client (ADMIN/EMPLOYEE only)"
+              }
+            },
+            {
+              "name": "Get Client Usage Chart (Admin/Employee)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/client-usage-chart/{{client_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "client-usage-chart", "{{client_id}}"],
+                  "query": [
+                    {
+                      "key": "months",
+                      "value": "6",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get monthly usage chart for specific client (ADMIN/EMPLOYEE only)"
+              }
+            },
+            {
+              "name": "Get Client Service Usage (Admin/Employee)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/client-service-usage/{{client_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "client-service-usage", "{{client_id}}"],
+                  "query": [
+                    {
+                      "key": "months",
+                      "value": "1",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get service usage breakdown for specific client (ADMIN/EMPLOYEE only)"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Statistics",
+          "item": [
+            {
+              "name": "Get Billing Stats",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/billing/stats",
+                  "host": ["{{base_url}}"],
+                  "path": ["billing", "stats"]
+                },
+                "description": "Get billing statistics (ADMIN only)"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Service Requests",
+      "item": [
+        {
+          "name": "Client Operations",
+          "item": [
+            {
+              "name": "Create Service Request",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"description\": \"Preciso de um site completo para minha empresa\",\n  \"priority\": \"MEDIA\",\n  \"dueDate\": \"2024-12-31T23:59:59.000Z\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/service-requests",
+                  "host": ["{{base_url}}"],
+                  "path": ["service-requests"]
+                },
+                "description": "Create new service request (requires CLIENT role and sufficient credits)"
+              }
+            },
+            {
+              "name": "Get My Service Requests",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/service-requests/my-requests?page=1&limit=10&status=PENDING",
+                  "host": ["{{base_url}}"],
+                  "path": ["service-requests", "my-requests"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "status",
+                      "value": "PENDING"
+                    },
+                    {
+                      "key": "serviceId",
+                      "value": "{{service_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "website",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get client's own service requests (CLIENT role)"
+              }
+            },
+            {
+              "name": "Get My Service Request by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/service-requests/my-requests/{{service_request_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["service-requests", "my-requests", "{{service_request_id}}"]
+                },
+                "description": "Get specific service request details (CLIENT role)"
+              }
+            },
+            {
+              "name": "Update My Service Request",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Atualização da descrição do projeto\",\n  \"priority\": \"ALTA\",\n  \"dueDate\": \"2024-11-30T23:59:59.000Z\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/service-requests/my-requests/{{service_request_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["service-requests", "my-requests", "{{service_request_id}}"]
+                },
+                "description": "Update service request (only PENDING requests can be modified)"
+              }
+            },
+            {
+              "name": "Cancel My Service Request",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/service-requests/my-requests/{{service_request_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["service-requests", "my-requests", "{{service_request_id}}"]
+                },
+                "description": "Cancel service request (only PENDING requests can be cancelled)"
+              }
+            },
+            {
+              "name": "Get My Service Request Stats",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/service-requests/my-stats",
+                  "host": ["{{base_url}}"],
+                  "path": ["service-requests", "my-stats"]
+                },
+                "description": "Get client's service request statistics (CLIENT role)"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin/Employee Operations",
+          "item": [
+            {
+              "name": "Get All Service Requests",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/service-requests?page=1&limit=20&status=PENDING",
+                  "host": ["{{base_url}}"],
+                  "path": ["service-requests"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "status",
+                      "value": "PENDING"
+                    },
+                    {
+                      "key": "serviceId",
+                      "value": "{{service_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "clientId",
+                      "value": "{{client_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "website",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get all service requests (ADMIN/EMPLOYEE role)"
+              }
+            },
+            {
+              "name": "Get Service Request by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/service-requests/{{service_request_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["service-requests", "{{service_request_id}}"]
+                },
+                "description": "Get specific service request details (ADMIN/EMPLOYEE role)"
+              }
+            },
+            {
+              "name": "Approve Service Request",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"notes\": \"Projeto aprovado. Iniciando desenvolvimento.\",\n  \"priority\": \"ALTA\",\n  \"dueDate\": \"2024-10-30T23:59:59.000Z\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/service-requests/{{service_request_id}}/approve",
+                  "host": ["{{base_url}}"],
+                  "path": ["service-requests", "{{service_request_id}}", "approve"]
+                },
+                "description": "Approve service request - automatically creates task and deducts credits (ADMIN/EMPLOYEE role)"
+              }
+            },
+            {
+              "name": "Reject Service Request",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rejectionReason\": \"Informações insuficientes no projeto\",\n  \"notes\": \"Por favor, forneça mais detalhes sobre os requisitos do projeto.\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/service-requests/{{service_request_id}}/reject",
+                  "host": ["{{base_url}}"],
+                  "path": ["service-requests", "{{service_request_id}}", "reject"]
+                },
+                "description": "Reject service request (ADMIN/EMPLOYEE role)"
+              }
+            },
+            {
+              "name": "Get Service Request Stats",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{jwt_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/service-requests/stats",
+                  "host": ["{{base_url}}"],
+                  "path": ["service-requests", "stats"]
+                },
+                "description": "Get service request statistics (ADMIN/EMPLOYEE role)"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
