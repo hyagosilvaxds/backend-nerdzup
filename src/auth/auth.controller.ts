@@ -85,9 +85,9 @@ export class AuthController {
       throw new BadRequestException('Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed');
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 1024 * 1024 * 1024; // 1GB
     if (file.size > maxSize) {
-      throw new BadRequestException('File too large. Maximum size is 5MB');
+      throw new BadRequestException('File too large. Maximum size is 1GB');
     }
 
     const fileUrl = await this.uploadService.uploadFile(file, 'profile-photos');

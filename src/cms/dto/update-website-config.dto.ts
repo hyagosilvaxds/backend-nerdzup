@@ -7,6 +7,22 @@ export class UpdateWebsiteConfigDto {
   logoUrl?: string;
 
   @IsOptional()
+  @IsUrl()
+  faviconUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  siteName?: string;
+
+  @IsOptional()
+  @IsString()
+  supportEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  siteDescription?: string;
+
+  @IsOptional()
   @IsString()
   whatsapp?: string;
 

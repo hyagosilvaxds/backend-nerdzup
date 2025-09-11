@@ -281,6 +281,185 @@ task_files (id, taskId, fileName, fileUrl, fileType, uploadedBy, uploadedAt, des
 task_comments (id, taskId, authorId, content, createdAt, updatedAt)
 ```
 
+## 📖 Endpoints de Upload de Ícones de Serviços
+
+### 🆕 Criar Serviço com Ícone
+**`POST /services/with-icon`**
+
+Cria um novo serviço com upload de ícone em uma única requisição.
+
+#### Headers
+```
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+```
+
+#### Parâmetros (Form Data)
+| Campo | Tipo | Obrigatório | Descrição |
+|-------|------|-------------|-----------|
+| `icon` | file | Não | Arquivo de imagem do ícone |
+| `name` | string | Sim | Nome único do serviço (slug) |
+| `displayName` | string | Sim | Nome de exibição |
+| `description` | string | Sim | Descrição detalhada |
+| `shortDescription` | string | Sim | Descrição resumida |
+| `categoryId` | string | Sim | ID da categoria |
+| `credits` | number | Sim | Valor em créditos |
+| `estimatedDays` | number | Sim | Prazo estimado em dias |
+| `difficulty` | string | Sim | BASICO, INTERMEDIARIO ou AVANÇADO |
+| `features` | string | Não | Array JSON de funcionalidades |
+| `benefits` | string | Não | Array JSON de benefícios |
+| `tags` | string | Não | Array JSON de tags |
+| `isActive` | boolean | Não | Status ativo (padrão: true) |
+| `isFeatured` | boolean | Não | Serviço destacado (padrão: false) |
+
+#### Validações do Arquivo
+- **Tipos aceitos**: JPEG, PNG, GIF, WebP, SVG
+- **Tamanho máximo**: 1GB
+- **Campo opcional**: Se não fornecido, serviço é criado sem ícone
+
+#### Exemplo de Uso (JavaScript)
+```javascript
+const formData = new FormData();
+formData.append('icon', file); // File object
+formData.append('name', 'consultoria-digital');
+formData.append('displayName', 'Consultoria Digital');
+formData.append('description', 'Análise completa da presença digital...');
+formData.append('shortDescription', 'Consultoria em marketing digital');
+formData.append('categoryId', 'cm123abc');
+formData.append('credits', '250');
+formData.append('estimatedDays', '15');
+formData.append('difficulty', 'INTERMEDIARIO');
+formData.append('features', '["Análise SWOT", "Plano de Ação"]');
+formData.append('isActive', 'true');
+
+fetch('/services/with-icon', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + token
+  },
+  body: formData
+});
+```
+
+#### Resposta de Sucesso (201)
+```json
+{
+  "id": "cm456def",
+  "name": "consultoria-digital",
+  "displayName": "Consultoria Digital",
+  "description": "Análise completa da presença digital...",
+  "iconUrl": "http://localhost:4000/uploads/service-icons/uuid.png",
+  "credits": 250,
+  "estimatedDays": 15,
+  "difficulty": "INTERMEDIARIO",
+  "category": {
+    "id": "cm123abc",
+    "name": "Consultoria",
+    "displayName": "Consultoria",
+    "color": "#3B82F6"
+  }
+}
+```
+
+---
+
+### 🔄 Upload de Ícone para Serviço Existente
+**`POST /services/:id/upload-icon`**
+
+Faz upload ou atualiza o ícone de um serviço já criado.
+
+#### Headers
+```
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+```
+
+#### Parâmetros da URL
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| `id` | string | ID do serviço |
+
+#### Parâmetros (Form Data)
+| Campo | Tipo | Obrigatório | Descrição |
+|-------|------|-------------|-----------|
+| `icon` | file | **Sim** | Arquivo de imagem do ícone |
+
+#### Validações do Arquivo
+- **Tipos aceitos**: JPEG, PNG, GIF, WebP, SVG
+- **Tamanho máximo**: 1GB
+
+#### Exemplo de Uso (JavaScript)
+```javascript
+const formData = new FormData();
+formData.append('icon', file); // File object
+
+fetch('/services/cm456def/upload-icon', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + token
+  },
+  body: formData
+});
+```
+
+#### Resposta de Sucesso (200)
+```json
+{
+  "id": "cm456def",
+  "name": "consultoria-digital",
+  "displayName": "Consultoria Digital",
+  "iconUrl": "http://localhost:4000/uploads/service-icons/new-uuid.png",
+  "category": {
+    "id": "cm123abc",
+    "name": "Consultoria",
+    "displayName": "Consultoria",
+    "color": "#3B82F6"
+  }
+}
+```
+
+### ⚠️ Códigos de Erro
+
+#### 400 Bad Request
+```json
+{
+  "message": "No file provided",
+  "error": "Bad Request"
+}
+```
+
+```json
+{
+  "message": "Invalid file type. Only JPEG, PNG, GIF, WebP, and SVG are allowed",
+  "error": "Bad Request"
+}
+```
+
+```json
+{
+  "message": "File too large. Maximum size is 1GB",
+  "error": "Bad Request"
+}
+```
+
+#### 404 Not Found
+```json
+{
+  "message": "Serviço não encontrado",
+  "error": "Not Found"
+}
+```
+
+### 💡 Dicas de Implementação
+
+1. **Otimização de Imagens**: Recomenda-se otimizar imagens antes do upload para melhor performance
+2. **Preview**: Implemente preview do arquivo selecionado antes do upload
+3. **Progress**: Para arquivos maiores, considere mostrar progresso do upload
+4. **Fallback**: Tenha ícones padrão para serviços sem ícone personalizado
+5. **Cache**: URLs de ícone podem ser cacheadas pelo navegador
+
+---
+
 ## 🔒 Segurança
 
 - **Passwords** criptografados com bcrypt

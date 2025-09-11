@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { AssignPermissionsDto } from './dto/assign-permissions.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangeEmployeePasswordDto } from './dto/change-employee-password.dto';
 import { Role, Permission } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
@@ -47,6 +49,40 @@ export class EmployeesService {
       },
     });
 
+    // Assign initial permissions if provided
+    if (createEmployeeDto.permissions && createEmployeeDto.permissions.length > 0 && user.employee) {
+      const permissionsData = createEmployeeDto.permissions.map(permission => ({
+        employeeId: user.employee!.id,
+        permission,
+        grantedBy: createdById,
+      }));
+
+      await this.prisma.employeePermissions.createMany({
+        data: permissionsData,
+      });
+
+      // Reload user with permissions
+      const updatedUser = await this.prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          isActive: true,
+          profilePhoto: true,
+          createdAt: true,
+          updatedAt: true,
+          employee: {
+            include: {
+              permissions: true,
+            },
+          },
+        },
+      });
+
+      return updatedUser;
+    }
+
     const { password, ...result } = user;
     return result;
   }
@@ -60,6 +96,7 @@ export class EmployeesService {
             email: true,
             role: true,
             isActive: true,
+            profilePhoto: true,
             createdAt: true,
             updatedAt: true,
           },
@@ -79,12 +116,26 @@ export class EmployeesService {
             email: true,
             role: true,
             isActive: true,
+            profilePhoto: true,
             createdAt: true,
             updatedAt: true,
           },
         },
         permissions: true,
         campaigns: true,
+        taskAssignments: {
+          include: {
+            task: {
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                progress: true,
+                dueDate: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -123,6 +174,7 @@ export class EmployeesService {
             email: true,
             role: true,
             isActive: true,
+            profilePhoto: true,
             createdAt: true,
             updatedAt: true,
           },
@@ -147,7 +199,11 @@ export class EmployeesService {
       where: { id: employee.userId },
     });
 
-    return { message: 'Employee deleted successfully' };
+    return { 
+      message: 'Employee deleted successfully',
+      deletedEmployeeId: id,
+      deletedUserId: employee.userId,
+    };
   }
 
   async assignPermissions(id: string, assignPermissionsDto: AssignPermissionsDto, grantedBy: string) {
@@ -171,11 +227,19 @@ export class EmployeesService {
       grantedBy,
     }));
 
-    await this.prisma.employeePermissions.createMany({
-      data: permissionsData,
-    });
+    const createdPermissions = await Promise.all(
+      permissionsData.map(async (data) => {
+        return this.prisma.employeePermissions.create({ data });
+      })
+    );
 
-    return this.findOne(id);
+    return {
+      message: 'Permissions assigned successfully',
+      employeeId: id,
+      assignedPermissions: createdPermissions,
+      assignedBy: grantedBy,
+      assignedAt: new Date(),
+    };
   }
 
   async removePermission(id: string, permission: Permission) {
@@ -187,17 +251,137 @@ export class EmployeesService {
       throw new NotFoundException('Employee not found');
     }
 
-    await this.prisma.employeePermissions.deleteMany({
+    const deletedCount = await this.prisma.employeePermissions.deleteMany({
       where: {
         employeeId: id,
         permission,
       },
     });
 
-    return this.findOne(id);
+    if (deletedCount.count === 0) {
+      throw new NotFoundException('Permission not found for this employee');
+    }
+
+    return {
+      message: 'Permission removed successfully',
+      employeeId: id,
+      removedPermission: permission,
+      removedAt: new Date(),
+    };
   }
 
   async getPermissions() {
-    return Object.values(Permission);
+    return {
+      permissions: Object.values(Permission),
+    };
+  }
+
+  async resetPassword(employeeId: string, resetPasswordDto: ResetPasswordDto, adminId: string) {
+    const { newPassword } = resetPasswordDto;
+
+    // Verificar se o funcionário existe
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { user: true },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    // Hash da nova senha
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    // Atualizar a senha do usuário
+    await this.prisma.user.update({
+      where: { id: employee.userId },
+      data: { password: hashedPassword },
+    });
+
+    return {
+      message: 'Password reset successfully',
+      employeeId: employeeId,
+      userId: employee.userId,
+      resetBy: adminId,
+      resetAt: new Date(),
+    };
+  }
+
+  async changeEmployeePassword(employeeId: string, changePasswordDto: ChangeEmployeePasswordDto) {
+    if (!employeeId) {
+      throw new BadRequestException('Employee profile not found');
+    }
+
+    const { currentPassword, newPassword, confirmPassword } = changePasswordDto;
+
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestException('New password and confirmation do not match');
+    }
+
+    // Buscar funcionário e usuário
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { user: true },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    // Verificar senha atual
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, employee.user.password);
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    // Hash da nova senha
+    const hashedNewPassword = await bcrypt.hash(newPassword, 12);
+
+    // Atualizar senha
+    await this.prisma.user.update({
+      where: { id: employee.userId },
+      data: { password: hashedNewPassword },
+    });
+
+    return {
+      message: 'Password changed successfully',
+      employeeId: employeeId,
+      changedAt: new Date(),
+    };
+  }
+
+  async updateProfilePhoto(employeeId: string, file: Express.Multer.File) {
+    // Verificar se o funcionário existe
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { user: true },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    // Gerar URL da foto
+    const photoUrl = `/uploads/profile-photos/${file.filename}`;
+
+    // Atualizar a foto de perfil do usuário
+    const updatedUser = await this.prisma.user.update({
+      where: { id: employee.userId },
+      data: { profilePhoto: photoUrl },
+      select: {
+        id: true,
+        email: true,
+        profilePhoto: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      message: 'Profile photo updated successfully',
+      profilePhoto: updatedUser.profilePhoto,
+      fileName: file.filename,
+      originalName: file.originalname,
+      uploadedAt: new Date(),
+    };
   }
 }

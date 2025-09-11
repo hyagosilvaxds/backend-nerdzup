@@ -16,6 +16,45 @@ export class ServiceRequestsService {
 
   // =============== CLIENT METHODS ===============
 
+  async canRequestService(serviceId: string, clientId: string) {
+    // Verificar se o serviço existe e está ativo
+    const service = await this.prisma.service.findFirst({
+      where: {
+        id: serviceId,
+        isActive: true
+      },
+      select: {
+        id: true,
+        displayName: true,
+        credits: true,
+        isActive: true
+      }
+    });
+
+    if (!service) {
+      throw new NotFoundException('Service not found or inactive');
+    }
+
+    // Verificar se o cliente tem créditos suficientes
+    const wallet = await this.billingService.getClientWallet(clientId);
+    const hasEnoughCredits = wallet.availableCredits >= service.credits;
+
+    return {
+      canRequest: hasEnoughCredits,
+      service: {
+        id: service.id,
+        displayName: service.displayName,
+        requiredCredits: service.credits
+      },
+      wallet: {
+        availableCredits: wallet.availableCredits
+      },
+      message: hasEnoughCredits 
+        ? 'You can request this service' 
+        : `Insufficient credits. Required: ${service.credits}, Available: ${wallet.availableCredits}`
+    };
+  }
+
   async createServiceRequest(createDto: CreateServiceRequestDto, clientId: string) {
     // Verificar se o serviço existe e está ativo
     const service = await this.prisma.service.findFirst({
@@ -43,7 +82,17 @@ export class ServiceRequestsService {
         serviceId: createDto.serviceId,
         clientId,
         creditsCost: service.credits, // Snapshot do preço atual
+        projectName: createDto.projectName,
         description: createDto.description,
+        desiredDeadline: createDto.desiredDeadline ? new Date(createDto.desiredDeadline) : null,
+        targetAudience: createDto.targetAudience,
+        projectObjectives: createDto.projectObjectives,
+        brandGuidelines: createDto.brandGuidelines,
+        preferredColors: createDto.preferredColors || [],
+        technicalRequirements: createDto.technicalRequirements,
+        references: createDto.references,
+        documentUrls: createDto.documentUrls || [],
+        observations: createDto.observations,
         priority: createDto.priority,
         dueDate: createDto.dueDate ? new Date(createDto.dueDate) : null
       },
@@ -146,12 +195,17 @@ export class ServiceRequestsService {
     };
   }
 
-  async getServiceRequest(id: string, clientId: string) {
+  async getServiceRequest(id: string, clientId?: string) {
+    const where: any = { id };
+    
+    // Se clientId for fornecido, filtrar por ele (para clientes)
+    // Se não for fornecido, admin/employee pode ver qualquer solicitação
+    if (clientId) {
+      where.clientId = clientId;
+    }
+
     const serviceRequest = await this.prisma.serviceRequest.findFirst({
-      where: {
-        id,
-        clientId
-      },
+      where,
       include: {
         service: {
           select: {

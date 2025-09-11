@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { QueryServicesDto, UpdateServiceRatingDto } from './dto/query-services.dto';
@@ -7,6 +8,30 @@ import { QueryServicesDto, UpdateServiceRatingDto } from './dto/query-services.d
 @Injectable()
 export class ServicesService {
   constructor(private prisma: PrismaService) {}
+
+  private normalizeText(text: string): string {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // Remove diacritics (accents)
+  }
+
+  private createAccentPattern(text: string): string {
+    const accentMap: { [key: string]: string } = {
+      'a': '[aàáâãäå]',
+      'e': '[eèéêë]',
+      'i': '[iìíîï]',
+      'o': '[oòóôõö]',
+      'u': '[uùúûü]',
+      'c': '[cç]',
+      'n': '[nñ]',
+      'y': '[yýÿ]'
+    };
+    
+    return text.toLowerCase().split('').map(char => {
+      return accentMap[char] || char;
+    }).join('');
+  }
 
   async create(createServiceDto: CreateServiceDto) {
     // Verifica se a categoria existe
@@ -43,8 +68,8 @@ export class ServicesService {
 
   async findAll(query: QueryServicesDto) {
     const where: any = {};
-    const page = query.page || 1;
-    const limit = query.limit || 20;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
     // Filtros básicos
@@ -54,6 +79,38 @@ export class ServicesService {
 
     if (query.categoryId) {
       where.categoryId = query.categoryId;
+    }
+
+    if (query.categoryName) {
+      const normalizedCategoryName = this.normalizeText(query.categoryName);
+      where.category = {
+        OR: [
+          {
+            name: {
+              contains: query.categoryName,
+              mode: 'insensitive',
+            },
+          },
+          {
+            name: {
+              contains: normalizedCategoryName,
+              mode: 'insensitive',
+            },
+          },
+          {
+            displayName: {
+              contains: query.categoryName,
+              mode: 'insensitive',
+            },
+          },
+          {
+            displayName: {
+              contains: normalizedCategoryName,
+              mode: 'insensitive',
+            },
+          },
+        ],
+      };
     }
 
     if (query.difficulty) {
@@ -89,33 +146,64 @@ export class ServicesService {
       where.rating = { gte: query.minRating };
     }
 
-    // Busca por texto
+    // Busca por texto com normalização
     if (query.search) {
-      where.OR = [
-        {
-          displayName: {
-            contains: query.search,
-            mode: 'insensitive',
-          },
+      const normalizedSearch = this.normalizeText(query.search);
+      const searchVariations = [query.search, normalizedSearch];
+      
+      // Criar variações manuais para casos comuns
+      const commonAccentMaps: { [key: string]: string[] } = {
+        'gestao': ['gestão', 'gestao'],
+        'gestão': ['gestão', 'gestao'],
+        'comunicacao': ['comunicação', 'comunicacao'],
+        'comunicação': ['comunicação', 'comunicacao'],
+        'criacao': ['criação', 'criacao'],
+        'criação': ['criação', 'criacao'],
+        'programacao': ['programação', 'programacao'],
+        'programação': ['programação', 'programacao'],
+      };
+      
+      if (commonAccentMaps[normalizedSearch]) {
+        searchVariations.push(...commonAccentMaps[normalizedSearch]);
+      }
+      if (commonAccentMaps[query.search.toLowerCase()]) {
+        searchVariations.push(...commonAccentMaps[query.search.toLowerCase()]);
+      }
+      
+      // Remove duplicatas
+      const uniqueVariations = [...new Set(searchVariations)];
+      
+      const searchConditions: any[] = [];
+      for (const variation of uniqueVariations) {
+        searchConditions.push(
+          {
+            displayName: {
+              contains: variation,
+              mode: 'insensitive',
+            },
+          } as any,
+          {
+            description: {
+              contains: variation,
+              mode: 'insensitive',
+            },
+          } as any,
+          {
+            shortDescription: {
+              contains: variation,
+              mode: 'insensitive',
+            },
+          } as any
+        );
+      }
+      
+      searchConditions.push({
+        tags: {
+          hasSome: uniqueVariations.map(v => v.toLowerCase()),
         },
-        {
-          description: {
-            contains: query.search,
-            mode: 'insensitive',
-          },
-        },
-        {
-          shortDescription: {
-            contains: query.search,
-            mode: 'insensitive',
-          },
-        },
-        {
-          tags: {
-            hasSome: [query.search.toLowerCase()],
-          },
-        },
-      ];
+      } as any);
+      
+      where.OR = searchConditions;
     }
 
     // Filtro por tags
@@ -158,7 +246,7 @@ export class ServicesService {
         },
         orderBy,
         skip,
-        take: query.limit,
+        take: limit,
       }),
       this.prisma.service.count({ where }),
     ]);
@@ -253,6 +341,25 @@ export class ServicesService {
     return this.prisma.service.update({
       where: { id },
       data: updateServiceDto,
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            displayName: true,
+            color: true,
+          },
+        },
+      },
+    });
+  }
+
+  async updateIcon(id: string, iconUrl: string) {
+    await this.findOne(id); // Verifica se existe
+
+    return this.prisma.service.update({
+      where: { id },
+      data: { iconUrl },
       include: {
         category: {
           select: {

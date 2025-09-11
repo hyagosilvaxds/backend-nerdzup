@@ -8,11 +8,19 @@ import {
   Delete,
   UseGuards,
   Query,
+  UseInterceptors,
+  UploadedFile,
+  HttpCode,
+  HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { AssignPermissionsDto } from './dto/assign-permissions.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangeEmployeePasswordDto } from './dto/change-employee-password.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -83,5 +91,58 @@ export class EmployeesController {
   @Permissions(Permission.MANAGE_PERMISSIONS)
   removePermission(@Param('id') id: string, @Query('permission') permission: Permission) {
     return this.employeesService.removePermission(id, permission);
+  }
+
+  @Patch(':id/reset-password')
+  @Roles(Role.ADMIN)
+  @Permissions(Permission.WRITE_EMPLOYEES)
+  @HttpCode(HttpStatus.OK)
+  resetPassword(@Param('id') id: string, @Body() resetPasswordDto: ResetPasswordDto, @User('id') adminId: string) {
+    return this.employeesService.resetPassword(id, resetPasswordDto, adminId);
+  }
+
+  @Post('change-password')
+  @Roles(Role.EMPLOYEE)
+  @HttpCode(HttpStatus.OK)
+  changePassword(@Body() changePasswordDto: ChangeEmployeePasswordDto, @User() user: any) {
+    return this.employeesService.changeEmployeePassword(user.employee?.id, changePasswordDto);
+  }
+
+  @Post(':id/profile-photo')
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @UseInterceptors(FileInterceptor('photo', {
+    storage: require('multer').diskStorage({
+      destination: './uploads/profile-photos',
+      filename: (req, file, cb) => {
+        const uniqueSuffix = require('uuid').v4();
+        const fileExt = require('path').extname(file.originalname);
+        cb(null, `${uniqueSuffix}${fileExt}`);
+      },
+    }),
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Apenas arquivos de imagem são permitidos'), false);
+      }
+    },
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  }))
+  @HttpCode(HttpStatus.OK)
+  uploadProfilePhoto(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @User() user: any,
+  ) {
+    // Verificar se o usuário pode alterar a foto
+    if (user.role === Role.EMPLOYEE && user.employee?.id !== id) {
+      throw new BadRequestException('Você só pode alterar sua própria foto de perfil');
+    }
+    
+    if (!file) {
+      throw new BadRequestException('Nenhuma imagem foi enviada');
+    }
+
+    return this.employeesService.updateProfilePhoto(id, file);
   }
 }

@@ -61,6 +61,8 @@ model User {
   taskComments  TaskComment[]
   apiKeys       ApiKey[]
   websiteConfigs WebsiteConfig[]
+  clientNotes   ClientNote[]
+  uploadedLibraryFiles ClientLibraryFile[]
   createdConversations Conversation[] @relation("ConversationCreator")
   conversationParticipants ConversationParticipant[]
   sentMessages  Message[] @relation("MessageSender")
@@ -108,8 +110,31 @@ model Client {
   subscriptions    Subscription[]
   transactions     Transaction[]
   serviceRequests  ServiceRequest[]
+  notes            ClientNote[]
+  libraryFiles     ClientLibraryFile[]
 
   @@map("clients")
+}
+
+model ClientLibraryFile {
+  id           String         @id @default(cuid())
+  clientId     String                            // Cliente proprietário
+  fileName     String                            // Nome do arquivo no servidor
+  originalName String                            // Nome original do arquivo
+  fileUrl      String                            // URL do arquivo
+  fileType     ClientFileType @default(OTHER)    // Tipo do arquivo
+  fileSize     Int                              // Tamanho em bytes
+  mimeType     String                            // Tipo MIME
+  description  String?                           // Descrição do arquivo
+  uploadedBy   String                            // Usuário que fez upload
+  uploadedAt   DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // Relations
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploader     User           @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+
+  @@map("client_library_files")
 }
 
 model Employee {
@@ -360,6 +385,13 @@ enum TaskFileType {
   DELIVERABLE  // Arquivo entregável (funcionário)
 }
 
+enum ClientFileType {
+  REFERENCE    // Arquivo de referência
+  BRAND_ASSET  // Ativo de marca (logos, guias de estilo)
+  DOCUMENT     // Documento geral
+  OTHER        // Outros tipos de arquivo
+}
+
 enum SubscriptionStatus {
   ACTIVE     // Assinatura ativa
   CANCELLED  // Cancelada
@@ -470,12 +502,26 @@ model ServiceRequest {
   clientId      String                                   // Cliente solicitante
   status        ServiceRequestStatus @default(PENDING)  // Status da solicitação
   creditsCost   Int                                      // Créditos necessários (snapshot do preço)
-  description   String?                                  // Descrição/requisitos específicos
+  
+  // Informações detalhadas do projeto
+  projectName         String                             // Nome do projeto
+  description         String                             // Descrição do projeto
+  desiredDeadline     DateTime?                          // Prazo desejado
+  targetAudience      String?                            // Público alvo
+  projectObjectives   String?                            // Objetivos do projeto
+  brandGuidelines     String?                            // Diretrizes da marca
+  preferredColors     String[]          @default([])     // Cores preferidas
+  technicalRequirements String?                          // Requisitos técnicos
+  references          String?                            // Referências
+  documentUrls        String[]          @default([])     // URLs dos documentos
+  observations        String?                            // Observações
+  
+  // Campos antigos mantidos para compatibilidade
   notes         String?                                  // Notas internas da equipe
   priority      TaskPriority        @default(MEDIA)     // Prioridade desejada
   dueDate       DateTime?                               // Prazo desejado pelo cliente
   approvedBy    String?                                 // ID do funcionário que aprovou
-  rejectedBy    String?                                 // ID do funcionário que rejeitou
+  rejectedBy    String?                                 // ID do funcionário que rejeitado
   rejectionReason String?                              // Motivo da rejeição
   approvedAt    DateTime?                               // Data de aprovação
   rejectedAt    DateTime?                               // Data de rejeição
@@ -592,6 +638,21 @@ model Subscription {
   @@map("subscriptions")
 }
 
+model ClientNote {
+  id        String   @id @default(cuid())
+  clientId  String                   // Cliente relacionado
+  note      String                   // Conteúdo da nota
+  authorId  String                   // Funcionário que criou a nota
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@map("client_notes")
+}
+
 model CreditPackage {
   id          String    @id @default(cuid())
   name        String    @unique              // Nome do pacote
@@ -665,6 +726,10 @@ model WebsiteConfig {
   
   // Geral
   logoUrl             String?                      // URL do logo
+  faviconUrl          String?                      // URL do favicon
+  siteName            String?                      // Nome do site
+  supportEmail        String?                      // Email de suporte
+  siteDescription     String?                      // Descrição do site
   whatsapp            String?                      // Número WhatsApp
   clientsCounter      String?                      // Contador de clientes
   counterText         String?                      // Texto do contador

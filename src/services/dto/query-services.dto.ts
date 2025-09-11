@@ -22,6 +22,10 @@ export class QueryServicesDto {
   @IsOptional()
   search?: string;
 
+  @IsString()
+  @IsOptional()
+  categoryName?: string;
+
   @IsEnum(ServiceDifficulty)
   @IsOptional()
   difficulty?: ServiceDifficulty;

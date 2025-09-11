@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateWebsiteConfigDto } from './dto/update-website-config.dto';
 import { CreateServiceCardDto, UpdateServiceCardDto } from './dto/service-card.dto';
@@ -346,5 +348,72 @@ export class CmsService {
 
     await Promise.all(updatePromises);
     return { message: 'FAQ items reordered successfully' };
+  }
+
+  // =============== FAVICON MANAGEMENT ===============
+
+  async uploadFavicon(file: Express.Multer.File, updatedBy: string) {
+    const faviconUrl = `/uploads/favicon/${file.filename}`;
+    
+    // Get current config to check if there's an existing favicon
+    const config = await this.getOrCreateWebsiteConfig();
+    
+    // Delete old favicon file if exists
+    if (config.faviconUrl) {
+      const oldFilePath = path.join('.', config.faviconUrl);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+    }
+    
+    // Update config with new favicon URL
+    const updatedConfig = await this.prisma.websiteConfig.update({
+      where: { id: config.id },
+      data: {
+        faviconUrl,
+        updatedBy,
+      },
+    });
+    
+    return {
+      message: 'Favicon uploaded successfully',
+      faviconUrl,
+      config: updatedConfig,
+    };
+  }
+
+  async getCurrentFavicon() {
+    const config = await this.getOrCreateWebsiteConfig();
+    return {
+      faviconUrl: config.faviconUrl,
+    };
+  }
+
+  async removeFavicon(updatedBy: string) {
+    const config = await this.getOrCreateWebsiteConfig();
+    
+    if (!config.faviconUrl) {
+      throw new NotFoundException('No favicon found');
+    }
+    
+    // Delete favicon file
+    const filePath = path.join('.', config.faviconUrl);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    
+    // Update config to remove favicon URL
+    const updatedConfig = await this.prisma.websiteConfig.update({
+      where: { id: config.id },
+      data: {
+        faviconUrl: null,
+        updatedBy,
+      },
+    });
+    
+    return {
+      message: 'Favicon removed successfully',
+      config: updatedConfig,
+    };
   }
 }

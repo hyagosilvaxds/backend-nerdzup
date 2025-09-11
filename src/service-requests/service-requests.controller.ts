@@ -10,8 +10,12 @@ import {
   UseGuards,
   Request,
   HttpCode,
-  HttpStatus
+  HttpStatus,
+  UseInterceptors,
+  UploadedFiles,
+  BadRequestException
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { ServiceRequestsService } from './service-requests.service';
 import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { UpdateServiceRequestDto } from './dto/update-service-request.dto';
@@ -21,25 +25,98 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import { UploadService } from '../upload/upload.service';
 
 @Controller('service-requests')
 @UseGuards(JwtAuthGuard)
 export class ServiceRequestsController {
-  constructor(private readonly serviceRequestsService: ServiceRequestsService) {}
+  constructor(
+    private readonly serviceRequestsService: ServiceRequestsService,
+    private readonly uploadService: UploadService
+  ) {}
 
   // =============== CLIENT ENDPOINTS ===============
 
-  @Post()
+  @Get('can-request/:serviceId')
   @Roles(Role.CLIENT)
   @UseGuards(RolesGuard)
-  async createServiceRequest(
-    @Body() createDto: CreateServiceRequestDto,
+  async canRequestService(
+    @Param('serviceId') serviceId: string,
     @Request() req: any
   ) {
     const clientId = req.user.client?.id;
     if (!clientId) {
-      throw new Error('Client profile not found');
+      throw new BadRequestException('Client profile not found');
     }
+    return this.serviceRequestsService.canRequestService(serviceId, clientId);
+  }
+
+  @Post()
+  @Roles(Role.CLIENT)
+  @UseGuards(RolesGuard)
+  @UseInterceptors(FilesInterceptor('documents', 10)) // Máximo 10 documentos
+  async createServiceRequest(
+    @Body() body: any,
+    @UploadedFiles() files: Array<Express.Multer.File>,
+    @Request() req: any
+  ) {
+    const clientId = req.user.client?.id;
+    if (!clientId) {
+      throw new BadRequestException('Client profile not found');
+    }
+
+    // Validate required fields
+    if (!body.serviceId || !body.projectName || !body.description) {
+      throw new BadRequestException('Missing required fields: serviceId, projectName, description');
+    }
+
+    let createDto: CreateServiceRequestDto;
+    try {
+      // Convert form data to proper types
+      createDto = {
+        serviceId: body.serviceId,
+        projectName: body.projectName,
+        description: body.description,
+        desiredDeadline: body.desiredDeadline,
+        targetAudience: body.targetAudience,
+        projectObjectives: body.projectObjectives,
+        brandGuidelines: body.brandGuidelines,
+        preferredColors: body.preferredColors ? JSON.parse(body.preferredColors) : [],
+        technicalRequirements: body.technicalRequirements,
+        references: body.references,
+        observations: body.observations,
+        priority: body.priority,
+        dueDate: body.dueDate,
+      };
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new BadRequestException('Invalid JSON format in preferredColors');
+      }
+      throw error;
+    }
+
+    // Process file uploads
+    const documentUrls: string[] = [];
+    if (files && files.length > 0) {
+      // Validate file types and sizes
+      for (const file of files) {
+        if (file.size > 1024 * 1024 * 1024) { // 1GB limit
+          throw new BadRequestException(`File ${file.originalname} is too large. Maximum size is 1GB`);
+        }
+      }
+
+      // Upload files
+      for (const file of files) {
+        try {
+          const documentUrl = await this.uploadService.uploadFile(file, 'service-request-documents');
+          documentUrls.push(documentUrl);
+        } catch (error) {
+          throw new BadRequestException(`Failed to upload file ${file.originalname}: ${error.message}`);
+        }
+      }
+    }
+
+    createDto.documentUrls = documentUrls;
     return this.serviceRequestsService.createServiceRequest(createDto, clientId);
   }
 
@@ -132,7 +209,7 @@ export class ServiceRequestsController {
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @UseGuards(RolesGuard)
   async getServiceRequestById(@Param('id') id: string) {
-    return this.serviceRequestsService.getServiceRequest(id, '');
+    return this.serviceRequestsService.getServiceRequest(id);
   }
 
   @Post(':id/approve')

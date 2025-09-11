@@ -22,6 +22,12 @@ export class UploadService {
     if (!fs.existsSync(join(this.uploadsPath, 'profile-photos'))) {
       fs.mkdirSync(join(this.uploadsPath, 'profile-photos'), { recursive: true });
     }
+    if (!fs.existsSync(join(this.uploadsPath, 'service-icons'))) {
+      fs.mkdirSync(join(this.uploadsPath, 'service-icons'), { recursive: true });
+    }
+    if (!fs.existsSync(join(this.uploadsPath, 'service-request-documents'))) {
+      fs.mkdirSync(join(this.uploadsPath, 'service-request-documents'), { recursive: true });
+    }
   }
 
   getMulterConfig(destination: string = 'documents') {
@@ -64,7 +70,7 @@ export class UploadService {
         }
       },
       limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit
+        fileSize: 1024 * 1024 * 1024, // 1GB limit
       },
     };
   }

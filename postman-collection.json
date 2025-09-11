@@ -7,7 +7,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3000"
+      "value": "http://localhost:4000"
     },
     {
       "key": "token",
@@ -659,6 +659,311 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "Create Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"exemplo-servico\",\n  \"displayName\": \"Exemplo de Serviço\",\n  \"description\": \"Descrição detalhada do serviço\",\n  \"shortDescription\": \"Descrição curta\",\n  \"categoryId\": \"categoria-id\",\n  \"credits\": 100,\n  \"estimatedDays\": 7,\n  \"difficulty\": \"BASICO\",\n  \"iconUrl\": \"https://example.com/icon.png\",\n  \"features\": [\"Feature 1\", \"Feature 2\"],\n  \"benefits\": [\"Benefit 1\", \"Benefit 2\"],\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"isActive\": true,\n  \"isFeatured\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["services"]
+            }
+          }
+        },
+        {
+          "name": "Create Service with Icon",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "icon",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "name",
+                  "value": "exemplo-servico",
+                  "type": "text"
+                },
+                {
+                  "key": "displayName",
+                  "value": "Exemplo de Serviço",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Descrição detalhada do serviço",
+                  "type": "text"
+                },
+                {
+                  "key": "shortDescription",
+                  "value": "Descrição curta",
+                  "type": "text"
+                },
+                {
+                  "key": "categoryId",
+                  "value": "categoria-id",
+                  "type": "text"
+                },
+                {
+                  "key": "credits",
+                  "value": "100",
+                  "type": "text"
+                },
+                {
+                  "key": "estimatedDays",
+                  "value": "7",
+                  "type": "text"
+                },
+                {
+                  "key": "difficulty",
+                  "value": "BASICO",
+                  "type": "text"
+                },
+                {
+                  "key": "features",
+                  "value": "[\"Feature 1\", \"Feature 2\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "benefits",
+                  "value": "[\"Benefit 1\", \"Benefit 2\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "tags",
+                  "value": "[\"tag1\", \"tag2\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "isFeatured",
+                  "value": "false",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services/with-icon",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", "with-icon"]
+            }
+          }
+        },
+        {
+          "name": "Upload Service Icon",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "icon",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services/:id/upload-icon",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", ":id", "upload-icon"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "service-id"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Services",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services?page=1&limit=20&search=gestao&categoryName=marketing&activeOnly=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["services"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "search",
+                  "value": "gestao"
+                },
+                {
+                  "key": "categoryName",
+                  "value": "marketing"
+                },
+                {
+                  "key": "activeOnly",
+                  "value": "true"
+                },
+                {
+                  "key": "categoryId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "difficulty",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "minCredits",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "maxCredits",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "featuredOnly",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Service by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "service-id"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Service",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Nome Atualizado\",\n  \"description\": \"Nova descrição\",\n  \"credits\": 150\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "service-id"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Service",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "service-id"
+                }
+              ]
+            }
+          }
         }
       ]
     }

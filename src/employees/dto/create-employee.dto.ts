@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsDecimal, IsBoolean, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsDecimal, IsBoolean, IsDateString, IsArray, IsEnum } from 'class-validator';
+import { Permission } from '@prisma/client';
 
 export class CreateEmployeeDto {
   @IsString()
@@ -36,4 +37,9 @@ export class CreateEmployeeDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean = true;
+
+  @IsArray()
+  @IsEnum(Permission, { each: true })
+  @IsOptional()
+  permissions?: Permission[];
 }

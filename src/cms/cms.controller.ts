@@ -8,7 +8,13 @@ import {
   Param,
   UseGuards,
   Request,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -173,5 +179,47 @@ export class CmsController {
   @Roles(Role.ADMIN)
   async reorderFaqItems(@Body('ids') ids: string[]) {
     return this.cmsService.reorderFaqItems(ids);
+  }
+
+  // =============== FAVICON MANAGEMENT ===============
+
+  @Post('favicon')
+  @Roles(Role.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('favicon', {
+      storage: diskStorage({
+        destination: './uploads/favicon',
+        filename: (req, file, callback) => {
+          const fileExtName = extname(file.originalname);
+          const fileName = `favicon-${uuidv4()}${fileExtName}`;
+          callback(null, fileName);
+        },
+      }),
+      fileFilter: (req, file, callback) => {
+        if (file.mimetype.match(/\/(ico|png|jpeg|jpg|svg)$/)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Only ICO, PNG, JPEG, JPG and SVG files are allowed for favicon!'), false);
+        }
+      },
+      limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit for favicon
+    }),
+  )
+  async uploadFavicon(@UploadedFile() file: Express.Multer.File, @Request() req) {
+    if (!file) {
+      throw new Error('No favicon file provided');
+    }
+    return this.cmsService.uploadFavicon(file, req.user.id);
+  }
+
+  @Get('favicon')
+  async getCurrentFavicon() {
+    return this.cmsService.getCurrentFavicon();
+  }
+
+  @Delete('favicon')
+  @Roles(Role.ADMIN)
+  async removeFavicon(@Request() req) {
+    return this.cmsService.removeFavicon(req.user.id);
   }
 }
