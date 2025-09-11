@@ -20,6 +20,7 @@ import { ServiceRequestsService } from './service-requests.service';
 import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { UpdateServiceRequestDto } from './dto/update-service-request.dto';
 import { ApproveServiceRequestDto, RejectServiceRequestDto } from './dto/approve-service-request.dto';
+import { AssignServiceRequestDto } from './dto/assign-service-request.dto';
 import { QueryServiceRequestsDto } from './dto/query-service-requests.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -234,5 +235,17 @@ export class ServiceRequestsController {
   ) {
     const rejectedBy = req.user.id;
     return this.serviceRequestsService.rejectServiceRequest(id, rejectDto, rejectedBy);
+  }
+
+  @Post(':id/assign')
+  @Roles(Role.ADMIN)
+  @UseGuards(RolesGuard)
+  async assignServiceRequest(
+    @Param('id') id: string,
+    @Body() assignDto: AssignServiceRequestDto,
+    @Request() req: any
+  ) {
+    const assignedBy = req.user.id;
+    return this.serviceRequestsService.assignServiceRequest(id, assignDto, assignedBy);
   }
 }

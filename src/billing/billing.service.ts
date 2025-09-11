@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSubscriptionPlanDto, UpdateSubscriptionPlanDto } from './dto/subscription-plan.dto';
 import { CreateCreditPackageDto, UpdateCreditPackageDto } from './dto/credit-package.dto';
-import { UpdateWalletCreditsDto, PurchaseCreditsDto, CreateSubscriptionDto, QueryTransactionsDto } from './dto/wallet.dto';
+import { UpdateWalletCreditsDto, PurchaseCreditsDto, CreateSubscriptionDto, QueryTransactionsDto, PurchaseSubscriptionDto, PurchaseCreditPackageDto } from './dto/wallet.dto';
 import { TransactionType, SubscriptionStatus, PaymentMethod } from '@prisma/client';
 
 @Injectable()
@@ -621,5 +621,226 @@ export class BillingService {
         return acc;
       }, {}),
     };
+  }
+
+  // =============== CLIENT PURCHASES ===============
+
+  async purchaseSubscription(clientId: string, purchaseDto: PurchaseSubscriptionDto) {
+    return this.prisma.$transaction(async (tx) => {
+      // Buscar o plano desejado
+      const newPlan = await tx.subscriptionPlan.findUnique({
+        where: { id: purchaseDto.planId, isActive: true }
+      });
+
+      if (!newPlan) {
+        throw new NotFoundException('Subscription plan not found or inactive');
+      }
+
+      // Verificar se o cliente já tem assinatura ativa
+      const existingSubscription = await tx.subscription.findFirst({
+        where: {
+          clientId,
+          status: SubscriptionStatus.ACTIVE,
+        },
+        include: {
+          plan: true
+        }
+      });
+
+      // Calcular o preço e créditos baseado no ciclo de pagamento
+      const isAnnual = purchaseDto.isAnnual || false;
+      let finalPrice = isAnnual && newPlan.annualPrice ? Number(newPlan.annualPrice) : Number(newPlan.monthlyPrice);
+      let creditsToAdd = newPlan.monthlyCredits;
+
+      // Se é anual, calcular créditos para o ano todo
+      if (isAnnual && newPlan.annualPrice) {
+        creditsToAdd = newPlan.monthlyCredits * 12;
+        
+        // Aplicar desconto se houver
+        if (newPlan.discountType && newPlan.discountValue) {
+          if (newPlan.discountType === 'PERCENTAGE') {
+            finalPrice = Number(newPlan.annualPrice) * (1 - Number(newPlan.discountValue) / 100);
+          } else if (newPlan.discountType === 'VALUE') {
+            finalPrice = Number(newPlan.annualPrice) - Number(newPlan.discountValue);
+          }
+        }
+      }
+
+      let amountToPay = finalPrice;
+      let creditsAdjustment = creditsToAdd;
+      let description = `Subscription purchase: ${newPlan.displayName} (${isAnnual ? 'Annual' : 'Monthly'})`;
+
+      // Se existe assinatura ativa, calcular diferenças
+      if (existingSubscription) {
+        const oldPlan = existingSubscription.plan;
+        const daysRemaining = Math.ceil(
+          (existingSubscription.nextBillingDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+        );
+        
+        if (daysRemaining > 0) {
+          // Calcular reembolso proporcional da assinatura antiga
+          const oldPlanDailyPrice = Number(oldPlan.monthlyPrice) / 30;
+          const refundAmount = oldPlanDailyPrice * daysRemaining;
+          
+          // Calcular diferença de preço
+          const priceDifference = finalPrice - refundAmount;
+          amountToPay = Math.max(0, priceDifference);
+
+          // Calcular diferença de créditos
+          const oldPlanDailyCredits = oldPlan.monthlyCredits / 30;
+          const remainingCreditsFromOldPlan = oldPlanDailyCredits * daysRemaining;
+          creditsAdjustment = creditsToAdd - remainingCreditsFromOldPlan;
+
+          description = `Subscription change from ${oldPlan.displayName} to ${newPlan.displayName} (${isAnnual ? 'Annual' : 'Monthly'})`;
+        }
+
+        // Cancelar assinatura anterior
+        await tx.subscription.update({
+          where: { id: existingSubscription.id },
+          data: {
+            status: SubscriptionStatus.CANCELLED,
+            endDate: new Date(),
+          }
+        });
+      }
+
+      // Calcular próxima data de cobrança
+      const nextBillingDate = new Date();
+      if (isAnnual) {
+        nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+      } else {
+        nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+      }
+
+      // Criar nova assinatura
+      const subscription = await tx.subscription.create({
+        data: {
+          clientId,
+          planId: newPlan.id,
+          paymentMethod: purchaseDto.paymentMethod,
+          nextBillingDate,
+          status: SubscriptionStatus.ACTIVE,
+          isAnnual,
+        },
+        include: {
+          plan: true,
+          client: { include: { user: true } }
+        }
+      });
+
+      // Obter ou criar carteira
+      let wallet = await tx.clientWallet.findUnique({
+        where: { clientId }
+      });
+
+      if (!wallet) {
+        wallet = await tx.clientWallet.create({
+          data: { clientId }
+        });
+      }
+
+      // Adicionar créditos
+      if (creditsAdjustment > 0) {
+        await tx.clientWallet.update({
+          where: { clientId },
+          data: {
+            availableCredits: wallet.availableCredits + creditsAdjustment,
+            totalEarned: wallet.totalEarned + creditsAdjustment,
+            lastTransaction: new Date(),
+          }
+        });
+
+        // Registrar transação de créditos
+        await tx.transaction.create({
+          data: {
+            clientId,
+            type: TransactionType.SUBSCRIPTION_PAYMENT,
+            amount: amountToPay,
+            credits: creditsAdjustment,
+            description,
+            paymentMethod: purchaseDto.paymentMethod,
+            status: 'COMPLETED',
+            processedAt: new Date(),
+          }
+        });
+      }
+
+      return {
+        subscription,
+        transaction: {
+          amount: amountToPay,
+          credits: creditsAdjustment,
+          description,
+          isUpgrade: !!existingSubscription,
+        }
+      };
+    });
+  }
+
+  async purchaseCreditPackage(clientId: string, purchaseDto: PurchaseCreditPackageDto) {
+    return this.prisma.$transaction(async (tx) => {
+      // Buscar o pacote de créditos
+      const creditPackage = await tx.creditPackage.findUnique({
+        where: { id: purchaseDto.packageId, isActive: true }
+      });
+
+      if (!creditPackage) {
+        throw new NotFoundException('Credit package not found or inactive');
+      }
+
+      // Calcular créditos totais (créditos + bônus)
+      const totalCredits = creditPackage.credits + (creditPackage.bonusCredits || 0);
+
+      // Obter ou criar carteira
+      let wallet = await tx.clientWallet.findUnique({
+        where: { clientId }
+      });
+
+      if (!wallet) {
+        wallet = await tx.clientWallet.create({
+          data: { clientId }
+        });
+      }
+
+      // Atualizar carteira
+      const updatedWallet = await tx.clientWallet.update({
+        where: { clientId },
+        data: {
+          availableCredits: wallet.availableCredits + totalCredits,
+          totalEarned: wallet.totalEarned + totalCredits,
+          lastTransaction: new Date(),
+        },
+        include: {
+          client: { include: { user: true } }
+        }
+      });
+
+      // Registrar transação
+      const transaction = await tx.transaction.create({
+        data: {
+          clientId,
+          type: TransactionType.CREDIT_PURCHASE,
+          amount: creditPackage.price,
+          credits: totalCredits,
+          description: `Credit package purchase: ${creditPackage.displayName}`,
+          paymentMethod: purchaseDto.paymentMethod,
+          status: 'COMPLETED',
+          processedAt: new Date(),
+        }
+      });
+
+      return {
+        wallet: updatedWallet,
+        transaction,
+        package: creditPackage,
+        totalCredits,
+        breakdown: {
+          baseCredits: creditPackage.credits,
+          bonusCredits: creditPackage.bonusCredits || 0,
+          totalCredits,
+          pricePerCredit: (Number(creditPackage.price) / totalCredits).toFixed(4)
+        }
+      };
+    });
   }
 }

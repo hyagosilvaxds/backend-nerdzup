@@ -14,7 +14,7 @@ import {
 import { BillingService } from './billing.service';
 import { CreateSubscriptionPlanDto, UpdateSubscriptionPlanDto } from './dto/subscription-plan.dto';
 import { CreateCreditPackageDto, UpdateCreditPackageDto } from './dto/credit-package.dto';
-import { UpdateWalletCreditsDto, PurchaseCreditsDto, CreateSubscriptionDto, QueryTransactionsDto } from './dto/wallet.dto';
+import { UpdateWalletCreditsDto, PurchaseCreditsDto, CreateSubscriptionDto, QueryTransactionsDto, PurchaseSubscriptionDto, PurchaseCreditPackageDto } from './dto/wallet.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { User } from '../auth/decorators/user.decorator';
@@ -288,5 +288,31 @@ export class BillingController {
   @Roles(Role.ADMIN)
   getStats() {
     return this.billingService.getBillingStats();
+  }
+
+  // =============== CLIENT PURCHASES ===============
+
+  @Post('purchase/subscription')
+  @HttpCode(HttpStatus.OK)
+  purchaseSubscription(
+    @Body() purchaseDto: PurchaseSubscriptionDto,
+    @User('clientId') clientId: string
+  ) {
+    if (!clientId) {
+      return { error: 'Only clients can purchase subscriptions' };
+    }
+    return this.billingService.purchaseSubscription(clientId, purchaseDto);
+  }
+
+  @Post('purchase/credits')
+  @HttpCode(HttpStatus.OK)
+  purchaseCreditPackage(
+    @Body() purchaseDto: PurchaseCreditPackageDto,
+    @User('clientId') clientId: string
+  ) {
+    if (!clientId) {
+      return { error: 'Only clients can purchase credit packages' };
+    }
+    return this.billingService.purchaseCreditPackage(clientId, purchaseDto);
   }
 }

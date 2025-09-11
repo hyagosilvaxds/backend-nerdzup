@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { BillingService } from '../billing/billing.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -14,7 +15,10 @@ import * as path from 'path';
 
 @Injectable()
 export class ClientsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private billingService: BillingService
+  ) {}
 
   async create(createClientDto: CreateClientDto) {
     const existingUser = await this.prisma.user.findUnique({
@@ -56,6 +60,11 @@ export class ClientsService {
         client: true,
       },
     });
+
+    // Criar wallet automaticamente para o novo cliente
+    if (user.client?.id) {
+      await this.billingService.getOrCreateWallet(user.client.id);
+    }
 
     const { password, ...result } = user;
     return result;
@@ -938,5 +947,119 @@ export class ClientsService {
       changedBy: adminId,
       changedAt: new Date(),
     };
+  }
+
+  async exportClientsToCsv(query: QueryClientsDto): Promise<string> {
+    // Usar a mesma lógica de filtros do findAll mas sem paginação
+    const where: any = {};
+    
+    if (query.search) {
+      where.OR = [
+        { fullName: { contains: query.search, mode: 'insensitive' } },
+        { companyName: { contains: query.search, mode: 'insensitive' } },
+        { tradeName: { contains: query.search, mode: 'insensitive' } },
+        { user: { email: { contains: query.search, mode: 'insensitive' } } },
+      ];
+    }
+
+    // Buscar todos os clientes sem paginação
+    const clients = await this.prisma.client.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            isActive: true,
+            createdAt: true
+          }
+        },
+        wallet: true,
+        transactions: {
+          select: {
+            id: true,
+            amount: true,
+            credits: true
+          }
+        },
+        serviceRequests: {
+          select: {
+            id: true,
+            status: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Cabeçalhos do CSV
+    const headers = [
+      'ID',
+      'Nome Completo',
+      'Email',
+      'Tipo de Pessoa',
+      'CPF/CNPJ',
+      'Cargo',
+      'Nome da Empresa',
+      'Nome Fantasia',
+      'Setor',
+      'Tamanho da Empresa',
+      'Website',
+      'Telefone',
+      'Endereço',
+      'Cidade',
+      'Estado',
+      'CEP',
+      'País',
+      'Status',
+      'Créditos Disponíveis',
+      'Total Ganho',
+      'Total Gasto',
+      'Solicitações Pendentes',
+      'Solicitações Aprovadas',
+      'Solicitações Rejeitadas',
+      'Data de Cadastro'
+    ];
+
+    // Converter dados para linhas CSV
+    const csvRows = [headers.join(',')];
+
+    for (const client of clients) {
+      const pendingRequests = client.serviceRequests.filter(sr => sr.status === 'PENDING').length;
+      const approvedRequests = client.serviceRequests.filter(sr => sr.status === 'APPROVED').length;
+      const rejectedRequests = client.serviceRequests.filter(sr => sr.status === 'REJECTED').length;
+
+      const row = [
+        `"${client.id}"`,
+        `"${client.fullName || ''}"`,
+        `"${client.user.email}"`,
+        `"${client.personType || ''}"`,
+        `"${client.taxDocument || ''}"`,
+        `"${client.position || ''}"`,
+        `"${client.companyName || ''}"`,
+        `"${client.tradeName || ''}"`,
+        `"${client.sector || ''}"`,
+        `"${client.companySize || ''}"`,
+        `"${client.website || ''}"`,
+        `"${client.phone || ''}"`,
+        `"${client.street || ''}"`,
+        `"${client.city || ''}"`,
+        `"${client.state || ''}"`,
+        `"${client.zipCode || ''}"`,
+        `"${client.country || ''}"`,
+        `"${client.user.isActive ? 'Ativo' : 'Inativo'}"`,
+        `"${client.wallet?.availableCredits || 0}"`,
+        `"${client.wallet?.totalEarned || 0}"`,
+        `"${client.wallet?.totalSpent || 0}"`,
+        `"${pendingRequests}"`,
+        `"${approvedRequests}"`,
+        `"${rejectedRequests}"`,
+        `"${client.user.createdAt.toLocaleDateString('pt-BR')}"`
+      ];
+
+      csvRows.push(row.join(','));
+    }
+
+    return csvRows.join('\n');
   }
 }

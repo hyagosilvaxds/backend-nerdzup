@@ -181,7 +181,7 @@ async function main() {
       description: 'Ideal para pequenas empresas que estão começando',
       monthlyPrice: 299.99,
       monthlyCredits: 500,
-      features: ['500 créditos mensais', 'Suporte via email', 'Relatórios mensais'],
+      benefits: ['500 créditos mensais', 'Suporte via email', 'Relatórios mensais'],
       isActive: true,
       order: 1,
     },

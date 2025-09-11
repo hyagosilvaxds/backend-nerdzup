@@ -4,6 +4,7 @@ import { BillingService } from '../billing/billing.service';
 import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { UpdateServiceRequestDto } from './dto/update-service-request.dto';
 import { ApproveServiceRequestDto, RejectServiceRequestDto } from './dto/approve-service-request.dto';
+import { AssignServiceRequestDto } from './dto/assign-service-request.dto';
 import { QueryServiceRequestsDto } from './dto/query-service-requests.dto';
 import { ServiceRequestStatus, TaskStatus } from '@prisma/client';
 
@@ -617,6 +618,159 @@ export class ServiceRequestsService {
       approved: approvedRequests,
       rejected: rejectedRequests,
       cancelled: cancelledRequests
+    };
+  }
+
+  async assignServiceRequest(id: string, assignDto: AssignServiceRequestDto, assignedBy: string) {
+    // Verificar se a solicitação existe e está pendente
+    const serviceRequest = await this.prisma.serviceRequest.findFirst({
+      where: {
+        id,
+        status: ServiceRequestStatus.PENDING
+      },
+      include: {
+        service: true,
+        client: true
+      }
+    });
+
+    if (!serviceRequest) {
+      throw new NotFoundException('Service request not found or already processed');
+    }
+
+    // Verificar se todos os funcionários existem e estão ativos
+    const employees = await this.prisma.employee.findMany({
+      where: {
+        id: { in: assignDto.employeeIds },
+        isActive: true
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            isActive: true
+          }
+        }
+      }
+    });
+
+    if (employees.length !== assignDto.employeeIds.length) {
+      throw new BadRequestException('One or more employees not found or inactive');
+    }
+
+    // Verificar se o cliente tem créditos suficientes
+    const wallet = await this.billingService.getClientWallet(serviceRequest.clientId);
+    if (wallet.availableCredits < serviceRequest.creditsCost) {
+      throw new BadRequestException(
+        `Client has insufficient credits. Required: ${serviceRequest.creditsCost}, Available: ${wallet.availableCredits}`
+      );
+    }
+
+    // Usar transação para garantir consistência
+    const result = await this.prisma.$transaction(async (tx) => {
+      // 1. Deduzir créditos do cliente
+      await this.billingService.deductCredits(
+        serviceRequest.clientId,
+        serviceRequest.creditsCost,
+        `Service: ${serviceRequest.service.displayName}`,
+        tx
+      );
+
+      // 2. Criar task automática
+      const task = await tx.task.create({
+        data: {
+          title: `${serviceRequest.service.displayName} - ${serviceRequest.client.fullName || 'Cliente'}`,
+          description: serviceRequest.description,
+          serviceId: serviceRequest.serviceId,
+          clientId: serviceRequest.clientId,
+          status: TaskStatus.BACKLOG,
+          priority: assignDto.priority || serviceRequest.priority,
+          dueDate: assignDto.dueDate ? new Date(assignDto.dueDate) : serviceRequest.dueDate
+        }
+      });
+
+      // 3. Atribuir funcionários à task
+      const taskAssignments = assignDto.employeeIds.map(employeeId => ({
+        taskId: task.id,
+        employeeId,
+        assignedBy
+      }));
+
+      await tx.taskAssignee.createMany({
+        data: taskAssignments
+      });
+
+      // 4. Aprovar solicitação e vincular task
+      const updatedRequest = await tx.serviceRequest.update({
+        where: { id },
+        data: {
+          status: ServiceRequestStatus.APPROVED,
+          taskId: task.id,
+          approvedBy: assignedBy,
+          approvedAt: new Date(),
+          notes: assignDto.notes,
+          priority: assignDto.priority || serviceRequest.priority,
+          dueDate: assignDto.dueDate ? new Date(assignDto.dueDate) : serviceRequest.dueDate
+        },
+        include: {
+          service: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true,
+              description: true,
+              credits: true,
+              estimatedDays: true,
+              difficulty: true
+            }
+          },
+          client: {
+            select: {
+              id: true,
+              fullName: true,
+              user: {
+                select: {
+                  email: true
+                }
+              }
+            }
+          },
+          task: {
+            include: {
+              assignees: {
+                include: {
+                  employee: {
+                    select: {
+                      id: true,
+                      name: true,
+                      position: true,
+                      user: {
+                        select: {
+                          email: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      return updatedRequest;
+    });
+
+    return {
+      message: 'Service request assigned and task created successfully',
+      serviceRequest: result,
+      assignedEmployees: employees.map(emp => ({
+        id: emp.id,
+        name: emp.name,
+        position: emp.position,
+        email: emp.user.email
+      }))
     };
   }
 }

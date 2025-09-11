@@ -606,8 +606,12 @@ model SubscriptionPlan {
   description     String?                       // Descrição do plano
   monthlyCredits  Int                          // Créditos concedidos por mês
   monthlyPrice    Decimal                      // Preço mensal em reais
+  annualPrice     Decimal?                     // Preço anual em reais (opcional)
+  discountType    String?                      // Tipo de desconto: "PERCENTAGE" ou "VALUE"
+  discountValue   Decimal?                     // Valor do desconto (% ou valor fixo)
   isActive        Boolean        @default(true) // Plano ativo/inativo
-  features        String[]                     // Recursos inclusos
+  isPopular       Boolean        @default(false) // Plano popular/destacado
+  benefits        String[]                     // Benefícios inclusos
   order           Int            @default(0)    // Ordem de exibição
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
@@ -628,6 +632,7 @@ model Subscription {
   nextBillingDate DateTime                           // Próxima cobrança
   paymentMethod   PaymentMethod      @default(CREDIT_CARD) // Método de pagamento
   isAutoRenew     Boolean            @default(true)  // Renovação automática
+  isAnnual        Boolean            @default(false) // Cobrança anual ou mensal
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
@@ -662,6 +667,7 @@ model CreditPackage {
   price       Decimal                       // Preço em reais
   bonusCredits Int      @default(0)         // Créditos bônus
   isActive    Boolean   @default(true)      // Pacote ativo/inativo
+  isPopular   Boolean   @default(false)     // Pacote popular/destacado
   order       Int       @default(0)         // Ordem de exibição
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, Min, IsDecimal, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsInt, Min, IsDecimal, IsBoolean, IsNumber } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 export class CreateCreditPackageDto {
@@ -14,10 +14,11 @@ export class CreateCreditPackageDto {
 
   @IsInt()
   @Min(1)
+  @Type(() => Number)
   credits: number;
 
-  @IsDecimal()
-  @Transform(({ value }) => parseFloat(value))
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Transform(({ value }) => value != null ? parseFloat(value) : undefined)
   price: number;
 
   @IsInt()
@@ -25,6 +26,10 @@ export class CreateCreditPackageDto {
   @IsOptional()
   @Type(() => Number)
   bonusCredits?: number = 0;
+
+  @IsBoolean()
+  @IsOptional()
+  isPopular?: boolean = false;
 
   @IsInt()
   @Min(0)
@@ -45,10 +50,11 @@ export class UpdateCreditPackageDto {
   @IsInt()
   @Min(1)
   @IsOptional()
+  @Type(() => Number)
   credits?: number;
 
-  @IsDecimal()
-  @Transform(({ value }) => parseFloat(value))
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Transform(({ value }) => value != null ? parseFloat(value) : undefined)
   @IsOptional()
   price?: number;
 
@@ -61,6 +67,10 @@ export class UpdateCreditPackageDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isPopular?: boolean;
 
   @IsInt()
   @Min(0)

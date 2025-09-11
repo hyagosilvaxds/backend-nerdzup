@@ -1,5 +1,10 @@
-import { IsString, IsOptional, IsInt, Min, IsDecimal, IsBoolean, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsInt, Min, IsDecimal, IsBoolean, IsArray, IsEnum, ValidateIf, IsNumber } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+
+export enum DiscountType {
+  PERCENTAGE = 'PERCENTAGE',
+  VALUE = 'VALUE'
+}
 
 export class CreateSubscriptionPlanDto {
   @IsString()
@@ -14,16 +19,36 @@ export class CreateSubscriptionPlanDto {
 
   @IsInt()
   @Min(0)
+  @Type(() => Number)
   monthlyCredits: number;
 
-  @IsDecimal()
-  @Transform(({ value }) => parseFloat(value))
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Transform(({ value }) => value != null ? parseFloat(value) : undefined)
   monthlyPrice: number;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Transform(({ value }) => value != null ? parseFloat(value) : undefined)
+  @IsOptional()
+  annualPrice?: number;
+
+  @IsEnum(DiscountType)
+  @IsOptional()
+  discountType?: DiscountType;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Transform(({ value }) => value != null ? parseFloat(value) : undefined)
+  @IsOptional()
+  @ValidateIf(o => o.discountType !== undefined && o.discountType !== null)
+  discountValue?: number;
 
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
-  features?: string[] = [];
+  benefits?: string[] = [];
+
+  @IsBoolean()
+  @IsOptional()
+  isPopular?: boolean = false;
 
   @IsInt()
   @Min(0)
@@ -44,12 +69,28 @@ export class UpdateSubscriptionPlanDto {
   @IsInt()
   @Min(0)
   @IsOptional()
+  @Type(() => Number)
   monthlyCredits?: number;
 
-  @IsDecimal()
-  @Transform(({ value }) => parseFloat(value))
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Transform(({ value }) => value != null ? parseFloat(value) : undefined)
   @IsOptional()
   monthlyPrice?: number;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Transform(({ value }) => value != null ? parseFloat(value) : undefined)
+  @IsOptional()
+  annualPrice?: number;
+
+  @IsEnum(DiscountType)
+  @IsOptional()
+  discountType?: DiscountType;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Transform(({ value }) => value != null ? parseFloat(value) : undefined)
+  @IsOptional()
+  @ValidateIf(o => o.discountType !== undefined && o.discountType !== null)
+  discountValue?: number;
 
   @IsBoolean()
   @IsOptional()
@@ -58,7 +99,11 @@ export class UpdateSubscriptionPlanDto {
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
-  features?: string[];
+  benefits?: string[];
+
+  @IsBoolean()
+  @IsOptional()
+  isPopular?: boolean;
 
   @IsInt()
   @Min(0)

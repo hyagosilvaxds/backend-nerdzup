@@ -1,4 +1,4 @@
-import { IsString, IsInt, Min, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsInt, Min, IsOptional, IsEnum, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaymentMethod } from '@prisma/client';
 
@@ -21,6 +21,26 @@ export class PurchaseCreditsDto {
 export class CreateSubscriptionDto {
   @IsString()
   planId: string;
+
+  @IsEnum(PaymentMethod)
+  paymentMethod: PaymentMethod;
+}
+
+export class PurchaseSubscriptionDto {
+  @IsString()
+  planId: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isAnnual?: boolean = false;
+
+  @IsEnum(PaymentMethod)
+  paymentMethod: PaymentMethod;
+}
+
+export class PurchaseCreditPackageDto {
+  @IsString()
+  packageId: string;
 
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;

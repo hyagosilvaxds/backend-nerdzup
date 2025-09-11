@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { UploadModule } from '../upload/upload.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UploadModule } from '../upload/upload.module';
       inject: [ConfigService],
     }),
     UploadModule,
+    BillingModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, LocalStrategy],

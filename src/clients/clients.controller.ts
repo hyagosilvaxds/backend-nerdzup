@@ -13,7 +13,10 @@ import {
   Query,
   UseInterceptors,
   UploadedFile,
+  Res,
+  Header,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
@@ -256,5 +259,15 @@ export class ClientsController {
   @HttpCode(HttpStatus.OK)
   adminChangePassword(@Param('id') id: string, @Body() adminChangePasswordDto: AdminChangePasswordDto, @User() user: any) {
     return this.clientsService.adminChangePassword(id, adminChangePasswordDto, user.id);
+  }
+
+  @Get('export/csv')
+  @Roles(Role.ADMIN)
+  @Permissions(Permission.READ_CLIENTS)
+  @Header('Content-Type', 'text/csv')
+  @Header('Content-Disposition', 'attachment; filename="clients-export.csv"')
+  async exportClientsCsv(@Query() query: QueryClientsDto, @Res() res: Response) {
+    const csvData = await this.clientsService.exportClientsToCsv(query);
+    res.send(csvData);
   }
 }

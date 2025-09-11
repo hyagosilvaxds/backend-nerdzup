@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { BillingService } from '../billing/billing.service';
 import { RegisterClientDto, RegisterEmployeeDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto, ResetPasswordDto, RequestLoginCodeDto, VerifyLoginCodeDto } from './dto/password-recovery.dto';
@@ -17,6 +18,7 @@ export class AuthService {
     private jwtService: JwtService,
     private emailService: EmailService,
     private uploadService: UploadService,
+    private billingService: BillingService,
   ) {}
 
   async validateUser(email: string, password: string) {
@@ -109,6 +111,11 @@ export class AuthService {
         client: true,
       },
     });
+
+    // Criar wallet automaticamente para o novo cliente
+    if (user.client?.id) {
+      await this.billingService.getOrCreateWallet(user.client.id);
+    }
 
     const { password, ...result } = user;
     return result;
