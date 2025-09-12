@@ -165,8 +165,24 @@ export class BillingController {
 
   @Post('subscriptions/:id/cancel')
   @HttpCode(HttpStatus.OK)
-  cancelSubscription(@Param('id') subscriptionId: string) {
+  cancelSubscription(@Param('id') subscriptionId: string, @User('clientId') clientId: string) {
+    if (!clientId) {
+      return { error: 'Only clients can cancel subscriptions' };
+    }
     return this.billingService.cancelSubscription(subscriptionId);
+  }
+
+  @Post('subscriptions/:id/change-plan')
+  @HttpCode(HttpStatus.OK)
+  changeSubscriptionPlan(
+    @Param('id') subscriptionId: string,
+    @Body() changeDto: PurchaseSubscriptionDto,
+    @User('clientId') clientId: string
+  ) {
+    if (!clientId) {
+      return { error: 'Only clients can change subscription plans' };
+    }
+    return this.billingService.changeSubscriptionPlan(subscriptionId, changeDto);
   }
 
   // =============== TRANSACTIONS ===============

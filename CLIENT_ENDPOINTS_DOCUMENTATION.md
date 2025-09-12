@@ -102,22 +102,26 @@ GET /clients?page=1&limit=10&search=acme&sortBy=totalSpent&sortOrder=desc
 
 ---
 
-## 2. Get Single Client
+## 2. Get Client Profile by ID
 **GET** `/clients/:id`
 
 ### Description
-Returns detailed information about a specific client.
+Returns detailed profile information about a specific client, including user account details and associated campaigns. Admins and employees can access any client's profile, while clients can only access their own profile data.
 
 ### Required Roles
-- `ADMIN`
-- `EMPLOYEE`
-- `CLIENT` (only their own data)
+- `ADMIN` (can access any client's profile)
+- `EMPLOYEE` (can access any client's profile)
+- `CLIENT` (can only access their own profile)
 
 ### Required Permissions
 - `READ_CLIENTS`
 
 ### URL Parameters
 - `id` (string) - Client ID
+
+### Access Control
+- **Admins and Employees**: Full access to any client's profile information
+- **Clients**: Can only access their own profile (user.client?.id must match the requested ID)
 
 ### Response
 ```json
@@ -146,6 +150,7 @@ Returns detailed information about a specific client.
     "email": "john@acme.com",
     "role": "CLIENT",
     "isActive": true,
+    "profilePhoto": "/uploads/profile-photos/photo.jpg",
     "createdAt": "2024-01-01T00:00:00.000Z",
     "updatedAt": "2024-01-01T00:00:00.000Z"
   },
@@ -167,7 +172,7 @@ Returns detailed information about a specific client.
 
 ### Error Responses
 - `404` - Client not found
-- `403` - Forbidden (clients can only access their own data)
+- `403` - Forbidden (clients can only access their own profile data)
 
 ---
 
@@ -245,16 +250,16 @@ Creates a new client account.
 
 ---
 
-## 4. Update Client
+## 4. Update Client Profile
 **PATCH** `/clients/:id`
 
 ### Description
-Updates client information.
+Updates client profile information. Allows clients to update their own profile, while admins and employees can update any client's profile. Note that email and password cannot be updated through this endpoint.
 
 ### Required Roles
-- `ADMIN`
-- `EMPLOYEE`
-- `CLIENT` (only their own data)
+- `ADMIN` (can update any client's profile)
+- `EMPLOYEE` (can update any client's profile) 
+- `CLIENT` (can only update their own profile)
 
 ### Required Permissions
 - `WRITE_CLIENTS`
@@ -262,12 +267,45 @@ Updates client information.
 ### URL Parameters
 - `id` (string) - Client ID
 
-### Request Body
+### Access Control
+- **Admins and Employees**: Can update any client's profile information
+- **Clients**: Can only update their own profile (user.client?.id must match the requested ID)
+
+### Available Fields (All Optional)
+All fields from the client profile can be updated except `email` and `password`:
+
+#### Personal Information
+- `fullName` (string) - Full name
+- `personType` (enum) - `INDIVIDUAL` or `BUSINESS`
+- `taxDocument` (string) - CPF or CNPJ
+- `position` (string) - Job title/position
+
+#### Company Information (for BUSINESS type)
+- `companyName` (string) - Company legal name
+- `tradeName` (string) - Company trade name
+- `sector` (string) - Business sector
+- `companySize` (enum) - `MICRO`, `SMALL`, `MEDIUM`, `LARGE`, `ENTERPRISE`
+- `website` (string) - Company website URL
+
+#### Contact Information
+- `phone` (string) - Phone number
+
+#### Address Information
+- `street` (string) - Street address
+- `city` (string) - City
+- `state` (string) - State/province
+- `zipCode` (string) - ZIP/postal code
+- `country` (string) - Country
+
+### Example Request Body
 ```json
 {
   "fullName": "John Doe Updated",
   "phone": "+5511888888888",
-  "website": "https://new-acme.com"
+  "website": "https://new-acme.com",
+  "position": "CTO",
+  "city": "Rio de Janeiro",
+  "state": "RJ"
 }
 ```
 
@@ -279,7 +317,7 @@ Updates client information.
   "fullName": "John Doe Updated",
   "personType": "BUSINESS",
   "taxDocument": "12345678000100",
-  "position": "CEO",
+  "position": "CTO",
   "companyName": "Acme Corp",
   "tradeName": "Acme",
   "sector": "Technology",
@@ -287,8 +325,8 @@ Updates client information.
   "website": "https://new-acme.com",
   "phone": "+5511888888888",
   "street": "123 Main St",
-  "city": "São Paulo",
-  "state": "SP",
+  "city": "Rio de Janeiro",
+  "state": "RJ",
   "zipCode": "01234567",
   "country": "Brasil",
   "createdAt": "2024-01-01T00:00:00.000Z",
@@ -298,6 +336,7 @@ Updates client information.
     "email": "john@acme.com",
     "role": "CLIENT",
     "isActive": true,
+    "profilePhoto": "/uploads/profile-photos/photo.jpg",
     "createdAt": "2024-01-01T00:00:00.000Z",
     "updatedAt": "2024-01-01T00:00:00.000Z"
   }
@@ -306,7 +345,13 @@ Updates client information.
 
 ### Error Responses
 - `404` - Client not found
-- `403` - Forbidden
+- `403` - Forbidden (clients can only update their own profile)
+
+### Notes
+- **Email and password updates**: Use dedicated endpoints for changing email and password
+- **Flexible updates**: Send only the fields you want to update
+- **Data validation**: All fields are validated according to their type and constraints
+- **Role-based access**: Clients can only update their own profiles, while staff can update any client's profile
 
 ---
 
@@ -512,22 +557,34 @@ Retrieves all notes for a specific client. Only accessible by admins and employe
 
 ---
 
-## 10. Get Client Files
+## 10. Get Client Files & Library
 **GET** `/clients/:id/files`
 
 ### Description
-Retrieves all files associated with a client, including uploaded documents and received deliverables.
+Retrieves all files associated with a client, including service request uploads, project deliverables, and client library files. This is a comprehensive endpoint that returns all file types organized by category.
 
 ### Required Roles
-- `ADMIN`
-- `EMPLOYEE`
-- `CLIENT` (only their own files)
+- `ADMIN` (can access any client's files)
+- `EMPLOYEE` (can access any client's files)
+- `CLIENT` (can only access their own files)
 
 ### Required Permissions
 - `READ_CLIENTS`
 
 ### URL Parameters
 - `id` (string) - Client ID
+
+### Access Control
+- **Admins and Employees**: Can access any client's files and library
+- **Clients**: Can only access their own files and library (user.client?.id must match the requested ID)
+
+### Response Structure
+The endpoint returns files organized into three categories:
+
+#### File Categories
+1. **clientUploads**: Files uploaded by the client during service requests
+2. **deliverables**: Files delivered by the team (completed work, designs, etc.)
+3. **libraryFiles**: Files in the client's personal library (brand assets, references, etc.)
 
 ### Response
 ```json
@@ -586,22 +643,35 @@ Retrieves all files associated with a client, including uploaded documents and r
 }
 ```
 
+### Library File Types
+Client library files are categorized by type:
+- `REFERENCE` - Reference materials and inspiration files
+- `BRAND_ASSET` - Brand assets like logos, style guides, fonts
+- `DOCUMENT` - General documents and files
+- `OTHER` - Other types of files (default)
+
 ### Error Responses
 - `400` - Forbidden (clients can only access their own files)
 - `404` - Client not found
 
+### Use Cases
+- **Client Dashboard**: Show all client files organized by category
+- **Project Management**: Access relevant files for active projects
+- **Brand Asset Management**: Manage and organize brand materials
+- **File History**: Track all files associated with a client account
+
 ---
 
-## 11. Get Service Requests History
+## 11. Get Client Service Requests History
 **GET** `/clients/:id/service-requests-history`
 
 ### Description
-Retrieves the service requests history for a client with pagination and optional status filtering.
+Retrieves a paginated history of all service requests made by a specific client. Includes detailed information about each request, its associated service, current status, and progress. Supports filtering by status and pagination for large datasets.
 
 ### Required Roles
-- `ADMIN`
-- `EMPLOYEE`
-- `CLIENT` (only their own history)
+- `ADMIN` (can access any client's service history)
+- `EMPLOYEE` (can access any client's service history)
+- `CLIENT` (can only access their own service history)
 
 ### Required Permissions
 - `READ_CLIENTS`
@@ -611,12 +681,19 @@ Retrieves the service requests history for a client with pagination and optional
 
 ### Query Parameters
 - `page` (number, optional) - Page number (default: 1)
-- `limit` (number, optional) - Items per page (default: 10)
-- `status` (string, optional) - Filter by status (PENDING, IN_PROGRESS, COMPLETED, CANCELLED)
+- `limit` (number, optional) - Items per page (default: 10, max: 50)
+- `status` (string, optional) - Filter by status: `PENDING`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`
 
-### Example Request
+### Access Control
+- **Admins and Employees**: Can view any client's complete service request history
+- **Clients**: Can only view their own service request history (user.client?.id must match the requested ID)
+
+### Example Requests
 ```
-GET /clients/client_id/service-requests-history?page=1&limit=10&status=COMPLETED
+GET /clients/client_id/service-requests-history
+GET /clients/client_id/service-requests-history?page=2&limit=5
+GET /clients/client_id/service-requests-history?status=COMPLETED
+GET /clients/client_id/service-requests-history?page=1&limit=10&status=IN_PROGRESS
 ```
 
 ### Response
@@ -665,9 +742,39 @@ GET /clients/client_id/service-requests-history?page=1&limit=10&status=COMPLETED
 }
 ```
 
+### Service Request Status Values
+- `PENDING` - Request submitted, awaiting review
+- `IN_PROGRESS` - Request is being worked on
+- `COMPLETED` - Request has been completed
+- `CANCELLED` - Request was cancelled
+
+### Response Fields Explanation
+- **projectName**: Client-provided name for the project
+- **targetAudience**: Intended audience for the project
+- **brandGuidelines**: Brand guidelines or style preferences
+- **budget**: Client's budget for the project
+- **timeline**: Expected timeline for completion
+- **additionalInfo**: Any additional information provided by the client
+- **documentUrls**: URLs of uploaded documents related to the request
+- **service**: Details about the requested service and its category
+- **task**: Associated task information (if a task was created from the request)
+
 ### Error Responses
-- `400` - Forbidden (clients can only access their own history)
+- `400` - Bad Request or Forbidden (clients can only access their own history)
 - `404` - Client not found
+
+### Use Cases
+- **Client Portal**: Show clients their complete project history
+- **Account Management**: Review all past and current projects for a client
+- **Project Tracking**: Monitor the status and progress of client requests
+- **Performance Analysis**: Analyze completion rates and timelines
+- **Support**: Quick access to client's project history for support purposes
+
+### Pagination Notes
+- Default limit is 10 requests per page
+- Maximum limit is 50 requests per page
+- Results are ordered by creation date (newest first)
+- Use `page` and `limit` parameters for navigation through large result sets
 
 ---
 

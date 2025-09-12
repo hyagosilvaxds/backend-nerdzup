@@ -225,6 +225,18 @@ export class ServiceRequestsController {
     return this.serviceRequestsService.approveServiceRequest(id, approveDto, approvedBy);
   }
 
+  @Post(':id/confirm')
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @UseGuards(RolesGuard)
+  async confirmServiceRequest(
+    @Param('id') id: string,
+    @Body() approveDto: ApproveServiceRequestDto,
+    @Request() req: any
+  ) {
+    const approvedBy = req.user.id;
+    return this.serviceRequestsService.approveServiceRequest(id, approveDto, approvedBy);
+  }
+
   @Post(':id/reject')
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @UseGuards(RolesGuard)

@@ -1,4 +1,4 @@
-import { IsString, IsUrl, IsOptional, IsNumber, Min } from 'class-validator';
+import { IsString, IsOptional, IsNumber, Min } from 'class-validator';
 
 export class CreateProcessStepDto {
   @IsString()
@@ -7,7 +7,7 @@ export class CreateProcessStepDto {
   @IsString()
   description: string;
 
-  @IsUrl()
+  @IsString()
   imageUrl: string;
 
   @IsOptional()
@@ -26,7 +26,7 @@ export class UpdateProcessStepDto {
   description?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   imageUrl?: string;
 
   @IsOptional()

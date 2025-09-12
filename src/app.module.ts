@@ -18,6 +18,8 @@ import { ApiKeysModule } from './api-keys/api-keys.module';
 import { CmsModule } from './cms/cms.module';
 import { ChatModule } from './chat/chat.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { CampaignsModule } from './campaigns/campaigns.module';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { ServiceRequestsModule } from './service-requests/service-requests.modul
     CmsModule,
     // ChatModule, // Temporarily disabled due to circular dependencies
     ServiceRequestsModule,
+    NotificationsModule,
+    CampaignsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

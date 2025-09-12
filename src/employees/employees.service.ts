@@ -23,11 +23,18 @@ export class EmployeesService {
 
     const hashedPassword = await bcrypt.hash(createEmployeeDto.password, 12);
 
+    // Validate role - only ADMIN and EMPLOYEE are allowed for employees
+    const selectedRole = createEmployeeDto.role || Role.EMPLOYEE;
+    
+    if (selectedRole !== Role.ADMIN && selectedRole !== Role.EMPLOYEE) {
+      throw new BadRequestException('Only ADMIN and EMPLOYEE roles are allowed');
+    }
+
     const user = await this.prisma.user.create({
       data: {
         email: createEmployeeDto.email,
         password: hashedPassword,
-        role: Role.EMPLOYEE,
+        role: selectedRole,
         employee: {
           create: {
             name: createEmployeeDto.name,
@@ -88,6 +95,7 @@ export class EmployeesService {
   }
 
   async findAll() {
+    // Find all employees and admins (users with employee profiles)
     return this.prisma.employee.findMany({
       include: {
         user: {
@@ -103,6 +111,17 @@ export class EmployeesService {
         },
         permissions: true,
       },
+      where: {
+        user: {
+          role: {
+            in: [Role.ADMIN, Role.EMPLOYEE]
+          }
+        }
+      },
+      orderBy: [
+        { user: { role: 'asc' } }, // ADMINs first, then EMPLOYEEs
+        { name: 'asc' }
+      ]
     });
   }
 
@@ -122,7 +141,11 @@ export class EmployeesService {
           },
         },
         permissions: true,
-        campaigns: true,
+        campaignAssignments: {
+          include: {
+            campaign: true,
+          },
+        },
         taskAssignments: {
           include: {
             task: {

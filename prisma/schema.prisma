@@ -66,6 +66,7 @@ model User {
   createdConversations Conversation[] @relation("ConversationCreator")
   conversationParticipants ConversationParticipant[]
   sentMessages  Message[] @relation("MessageSender")
+  notifications Notification[]
   messageReadReceipts MessageReadReceipt[]
 
   @@map("users")
@@ -153,7 +154,7 @@ model Employee {
   // Relations
   user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   permissions EmployeePermissions[]
-  campaigns   Campaign[]
+  campaignAssignments CampaignAssignee[]
   taskAssignments TaskAssignee[]
 
   @@map("employees")
@@ -182,17 +183,33 @@ model Campaign {
   endDate     DateTime?
   status      String   @default("DRAFT")
   clientId    String
-  employeeId  String?
+  serviceRequestId String? // ServiceRequest que originou a campanha
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
   client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  employee Employee? @relation(fields: [employeeId], references: [id])
+  serviceRequest ServiceRequest? @relation(fields: [serviceRequestId], references: [id], onDelete: SetNull)
+  assignees CampaignAssignee[] // Funcionários atribuídos à campanha
   tasks    Task[]
   conversations Conversation[] // Conversas relacionadas
 
   @@map("campaigns")
+}
+
+model CampaignAssignee {
+  id         String   @id @default(cuid())
+  campaignId String   
+  employeeId String
+  assignedAt DateTime @default(now())
+  assignedBy String   // ID do funcionário que fez a atribuição
+
+  // Relations
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, employeeId])
+  @@map("campaign_assignees")
 }
 
 model PasswordResetToken {
@@ -456,6 +473,7 @@ model Service {
   category          ServiceCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   tasks             Task[]
   transactions      Transaction[]
+  serviceCards      ServiceCard[]
   serviceRequests   ServiceRequest[]
 
   @@map("services")
@@ -471,6 +489,8 @@ model Task {
   status        TaskStatus    @default(BACKLOG) // Status da tarefa
   priority      TaskPriority  @default(MEDIA)   // Prioridade da tarefa
   progress      Int           @default(0)       // Progresso (0-100%)
+  estimatedHours Int?                          // Horas estimadas
+  spentHours    Int           @default(0)       // Horas gastas
   dueDate       DateTime?                       // Prazo de conclusão
   completedAt   DateTime?                       // Data de conclusão
   createdAt     DateTime      @default(now())
@@ -526,6 +546,7 @@ model ServiceRequest {
   approvedAt    DateTime?                               // Data de aprovação
   rejectedAt    DateTime?                               // Data de rejeição
   taskId        String?             @unique            // Task criada (se aprovado)
+  campaignId    String?                                // Campanha criada (se aprovado)
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
@@ -533,6 +554,7 @@ model ServiceRequest {
   service       Service             @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   client        Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
   task          Task?               @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  campaigns     Campaign[]          // Campanhas criadas a partir desta solicitação
 
   @@map("service_requests")
 }
@@ -785,6 +807,7 @@ model WebsiteConfig {
 model ServiceCard {
   id              String         @id @default(cuid())
   websiteConfigId String
+  serviceId       String?                         // ID do serviço relacionado (opcional)
   title           String                          // Título do card
   imageUrl        String                          // URL da imagem
   order           Int            @default(0)      // Ordem de exibição
@@ -793,6 +816,7 @@ model ServiceCard {
 
   // Relations
   websiteConfig   WebsiteConfig  @relation(fields: [websiteConfigId], references: [id], onDelete: Cascade)
+  service         Service?       @relation(fields: [serviceId], references: [id], onDelete: SetNull)
 
   @@map("service_cards")
 }
@@ -859,6 +883,50 @@ model FaqItem {
   websiteConfig   WebsiteConfig  @relation(fields: [websiteConfigId], references: [id], onDelete: Cascade)
 
   @@map("faq_items")
+}
+
+model Notification {
+  id          String             @id @default(cuid())
+  recipientId String                                    // ID do usuário destinatário
+  type        NotificationType                          // Tipo da notificação
+  title       String                                    // Título da notificação
+  message     String                                    // Mensagem da notificação
+  data        Json?                                     // Dados extras em JSON
+  isRead      Boolean            @default(false)        // Lida ou não
+  actionUrl   String?                                   // URL para ação (opcional)
+  priority    NotificationPriority @default(MEDIUM)     // Prioridade da notificação
+  expiresAt   DateTime?                                 // Data de expiração (opcional)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Relations
+  recipient   User              @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  SERVICE_REQUEST_APPROVED
+  SERVICE_REQUEST_REJECTED
+  SERVICE_REQUEST_ASSIGNED
+  SERVICE_REQUEST_COMPLETED
+  TASK_ASSIGNED
+  TASK_COMPLETED
+  TASK_DUE_SOON
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  SUBSCRIPTION_EXPIRED
+  SUBSCRIPTION_RENEWED
+  CREDITS_LOW
+  SYSTEM_ANNOUNCEMENT
+  GENERAL
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum ConversationType {

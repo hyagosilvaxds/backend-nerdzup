@@ -39,6 +39,7 @@ Creates a new employee account with user credentials and employee profile inform
   "hireDate": "2024-01-15T00:00:00.000Z",
   "salary": 5000.00,
   "isActive": true,
+  "role": "EMPLOYEE",
   "permissions": [
     "READ_CLIENTS",
     "WRITE_CLIENTS"
@@ -56,6 +57,7 @@ Creates a new employee account with user credentials and employee profile inform
 - `hireDate` (string, optional) - Hire date (ISO 8601 format, defaults to current date)
 - `salary` (number, optional) - Salary amount
 - `isActive` (boolean, optional) - Account status (defaults to true)
+- `role` (string, optional) - User role: `"ADMIN"` or `"EMPLOYEE"` (defaults to `"EMPLOYEE"`)
 - `permissions` (array, optional) - Array of initial permissions to assign
 
 ### Response
@@ -103,14 +105,36 @@ Creates a new employee account with user credentials and employee profile inform
 ### Error Responses
 - `409` - User with this email already exists
 - `400` - Invalid data format
+- `400` - Only ADMIN and EMPLOYEE roles are allowed
+
+### Creating Administrators
+To create a user with administrator privileges, set the `role` field to `"ADMIN"`:
+
+```json
+{
+  "email": "admin@company.com",
+  "password": "admin_password123",
+  "name": "Jane Smith",
+  "position": "System Administrator",
+  "department": "IT",
+  "role": "ADMIN",
+  "isActive": true
+}
+```
+
+**Important Notes:**
+- Only existing ADMINs can create new ADMIN users
+- ADMIN users have full system access and don't require specific permissions
+- The system validates that only `ADMIN` or `EMPLOYEE` roles can be assigned
+- CLIENT role is not allowed through the employee creation endpoint
 
 ---
 
-## 2. Get All Employees
+## 2. Get All Employees and Admins
 **GET** `/employees`
 
 ### Description
-Retrieves a list of all employees with their profile information and permissions.
+Retrieves a list of all employees and administrators with their profile information and permissions. Results are ordered by role (ADMINs first, then EMPLOYEEs) and then by name alphabetically.
 
 ### Required Roles
 - `ADMIN`
@@ -122,6 +146,29 @@ Retrieves a list of all employees with their profile information and permissions
 ### Response
 ```json
 [
+  {
+    "id": "admin_employee_id",
+    "userId": "admin_user_id",
+    "name": "Jane Smith",
+    "position": "System Administrator",
+    "department": "IT",
+    "phone": "+5511777777777",
+    "hireDate": "2023-01-01T00:00:00.000Z",
+    "salary": "8000.00",
+    "isActive": true,
+    "createdAt": "2023-01-01T09:00:00.000Z",
+    "updatedAt": "2024-01-15T09:00:00.000Z",
+    "user": {
+      "id": "admin_user_id",
+      "email": "jane.admin@company.com",
+      "role": "ADMIN",
+      "isActive": true,
+      "profilePhoto": "/uploads/profile-photos/admin-photo.jpg",
+      "createdAt": "2023-01-01T09:00:00.000Z",
+      "updatedAt": "2024-01-15T09:00:00.000Z"
+    },
+    "permissions": []
+  },
   {
     "id": "employee_id",
     "userId": "user_id",
@@ -674,8 +721,8 @@ fetch('/employees/employee_id/profile-photo', {
 ## Security Features
 
 ### Role-Based Access Control
-- **ADMIN**: Full access to all employee management functions
-- **EMPLOYEE**: Limited read access to employee information
+- **ADMIN**: Full access to all employee management functions, can create other ADMINs and EMPLOYEEs
+- **EMPLOYEE**: Limited read access to employee information, cannot create other users
 
 ### Permission-Based Access Control
 - Granular permissions for specific operations
@@ -703,8 +750,9 @@ fetch('/employees/employee_id/profile-photo', {
 
 ### Employee Lifecycle
 1. **Onboarding**: Create employee with minimal permissions, add as needed
-2. **Role Changes**: Update permissions when employees change roles
-3. **Offboarding**: Deactivate account before deletion for audit purposes
+2. **Admin Creation**: Use `role: "ADMIN"` field to create system administrators
+3. **Role Changes**: Update permissions when employees change roles (admins have full access by default)
+4. **Offboarding**: Deactivate account before deletion for audit purposes
 
 ### Security
 1. **Strong Passwords**: Enforce strong password policies for new employees

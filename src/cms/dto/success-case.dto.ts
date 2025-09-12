@@ -1,4 +1,4 @@
-import { IsString, IsUrl, IsOptional, IsNumber, Min } from 'class-validator';
+import { IsString, IsOptional, IsNumber, Min } from 'class-validator';
 
 export class CreateSuccessCaseDto {
   @IsString()
@@ -7,10 +7,10 @@ export class CreateSuccessCaseDto {
   @IsString()
   personRole: string;
 
-  @IsUrl()
+  @IsString()
   personPhotoUrl: string;
 
-  @IsUrl()
+  @IsString()
   caseImageUrl: string;
 
   @IsString()
@@ -32,11 +32,11 @@ export class UpdateSuccessCaseDto {
   personRole?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   personPhotoUrl?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   caseImageUrl?: string;
 
   @IsOptional()

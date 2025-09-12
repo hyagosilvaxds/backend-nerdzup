@@ -18,7 +18,10 @@ export class CmsService {
   async getOrCreateWebsiteConfig(userId?: string) {
     let config = await this.prisma.websiteConfig.findFirst({
       include: {
-        serviceCards: { orderBy: { order: 'asc' } },
+        serviceCards: { 
+          include: { service: true },
+          orderBy: { order: 'asc' } 
+        },
         processSteps: { orderBy: { order: 'asc' } },
         successCases: { orderBy: { order: 'asc' } },
         clientLogos: { orderBy: { order: 'asc' } },
@@ -33,7 +36,10 @@ export class CmsService {
           updatedBy: userId,
         },
         include: {
-          serviceCards: { orderBy: { order: 'asc' } },
+          serviceCards: { 
+          include: { service: true },
+          orderBy: { order: 'asc' } 
+        },
           processSteps: { orderBy: { order: 'asc' } },
           successCases: { orderBy: { order: 'asc' } },
           clientLogos: { orderBy: { order: 'asc' } },
@@ -59,7 +65,10 @@ export class CmsService {
         updatedBy,
       },
       include: {
-        serviceCards: { orderBy: { order: 'asc' } },
+        serviceCards: { 
+          include: { service: true },
+          orderBy: { order: 'asc' } 
+        },
         processSteps: { orderBy: { order: 'asc' } },
         successCases: { orderBy: { order: 'asc' } },
         clientLogos: { orderBy: { order: 'asc' } },
@@ -71,7 +80,10 @@ export class CmsService {
   async getPublicWebsiteConfig() {
     return this.prisma.websiteConfig.findFirst({
       include: {
-        serviceCards: { orderBy: { order: 'asc' } },
+        serviceCards: { 
+          include: { service: true },
+          orderBy: { order: 'asc' } 
+        },
         processSteps: { orderBy: { order: 'asc' } },
         successCases: { orderBy: { order: 'asc' } },
         clientLogos: { orderBy: { order: 'asc' } },
@@ -84,6 +96,9 @@ export class CmsService {
 
   async getServiceCards() {
     return this.prisma.serviceCard.findMany({
+      include: {
+        service: true,
+      },
       orderBy: { order: 'asc' },
     });
   }

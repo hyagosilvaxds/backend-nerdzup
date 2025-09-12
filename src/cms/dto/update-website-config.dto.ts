@@ -1,13 +1,13 @@
-import { IsString, IsOptional, IsUrl } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class UpdateWebsiteConfigDto {
   // Geral
   @IsOptional()
-  @IsUrl()
+  @IsString()
   logoUrl?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   faviconUrl?: string;
 
   @IsOptional()
@@ -57,7 +57,7 @@ export class UpdateWebsiteConfigDto {
   processButtonText?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   processButtonLink?: string;
 
   // Seção do vídeo
@@ -70,15 +70,15 @@ export class UpdateWebsiteConfigDto {
   videoButtonText?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   videoButtonLink?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   videoUrl?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   videoPosterUrl?: string;
 
   // FAQ
@@ -96,14 +96,14 @@ export class UpdateWebsiteConfigDto {
   footerCopyright?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   instagramLink?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   twitterLink?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   facebookLink?: string;
 }

@@ -777,6 +777,25 @@ export class BillingService {
     });
   }
 
+  async changeSubscriptionPlan(subscriptionId: string, changeDto: PurchaseSubscriptionDto) {
+    // Buscar a assinatura para obter o clientId
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      include: { client: true }
+    });
+
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    if (subscription.status !== SubscriptionStatus.ACTIVE) {
+      throw new BadRequestException('Only active subscriptions can be changed');
+    }
+
+    // Usar o método purchaseSubscription que já tem a lógica de troca
+    return this.purchaseSubscription(subscription.clientId, changeDto);
+  }
+
   async purchaseCreditPackage(clientId: string, purchaseDto: PurchaseCreditPackageDto) {
     return this.prisma.$transaction(async (tx) => {
       // Buscar o pacote de créditos

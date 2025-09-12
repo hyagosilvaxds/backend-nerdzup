@@ -428,7 +428,15 @@ export class ServiceRequestsService {
       },
       include: {
         service: true,
-        client: true
+        client: {
+          include: {
+            user: {
+              select: {
+                email: true
+              }
+            }
+          }
+        }
       }
     });
 
@@ -454,25 +462,40 @@ export class ServiceRequestsService {
         tx
       );
 
-      // 2. Criar task automática
+      // 2. Criar campanha automaticamente
+      const campaign = await tx.campaign.create({
+        data: {
+          name: `${serviceRequest.service.displayName} - ${serviceRequest.client.fullName || serviceRequest.client.user?.email || 'Cliente'}`,
+          description: serviceRequest.description,
+          startDate: new Date(),
+          endDate: approveDto.dueDate ? new Date(approveDto.dueDate) : (serviceRequest.dueDate || null),
+          status: 'ACTIVE',
+          clientId: serviceRequest.clientId,
+          serviceRequestId: serviceRequest.id
+        }
+      });
+
+      // 3. Criar task automática vinculada à campanha
       const task = await tx.task.create({
         data: {
           title: `${serviceRequest.service.displayName} - ${serviceRequest.client.fullName || 'Cliente'}`,
           description: serviceRequest.description,
           serviceId: serviceRequest.serviceId,
           clientId: serviceRequest.clientId,
+          campaignId: campaign.id,
           status: TaskStatus.BACKLOG,
           priority: approveDto.priority || serviceRequest.priority,
           dueDate: approveDto.dueDate ? new Date(approveDto.dueDate) : serviceRequest.dueDate
         }
       });
 
-      // 3. Aprovar solicitação e vincular task
+      // 4. Aprovar solicitação e vincular task e campanha
       const updatedRequest = await tx.serviceRequest.update({
         where: { id },
         data: {
           status: ServiceRequestStatus.APPROVED,
           taskId: task.id,
+          campaignId: campaign.id,
           approvedBy,
           approvedAt: new Date(),
           notes: approveDto.notes,
@@ -514,7 +537,7 @@ export class ServiceRequestsService {
         }
       });
 
-      return { serviceRequest: updatedRequest, task };
+      return { serviceRequest: updatedRequest, task, campaign };
     });
 
     return result;
@@ -630,7 +653,15 @@ export class ServiceRequestsService {
       },
       include: {
         service: true,
-        client: true
+        client: {
+          include: {
+            user: {
+              select: {
+                email: true
+              }
+            }
+          }
+        }
       }
     });
 
@@ -677,20 +708,34 @@ export class ServiceRequestsService {
         tx
       );
 
-      // 2. Criar task automática
+      // 2. Criar campanha automaticamente
+      const campaign = await tx.campaign.create({
+        data: {
+          name: `${serviceRequest.service.displayName} - ${serviceRequest.client.fullName || serviceRequest.client.user?.email || 'Cliente'}`,
+          description: serviceRequest.description,
+          startDate: new Date(),
+          endDate: assignDto.dueDate ? new Date(assignDto.dueDate) : (serviceRequest.dueDate || null),
+          status: 'ACTIVE',
+          clientId: serviceRequest.clientId,
+          serviceRequestId: serviceRequest.id
+        }
+      });
+
+      // 3. Criar task automática vinculada à campanha
       const task = await tx.task.create({
         data: {
           title: `${serviceRequest.service.displayName} - ${serviceRequest.client.fullName || 'Cliente'}`,
           description: serviceRequest.description,
           serviceId: serviceRequest.serviceId,
           clientId: serviceRequest.clientId,
+          campaignId: campaign.id,
           status: TaskStatus.BACKLOG,
           priority: assignDto.priority || serviceRequest.priority,
           dueDate: assignDto.dueDate ? new Date(assignDto.dueDate) : serviceRequest.dueDate
         }
       });
 
-      // 3. Atribuir funcionários à task
+      // 4. Atribuir funcionários à task
       const taskAssignments = assignDto.employeeIds.map(employeeId => ({
         taskId: task.id,
         employeeId,
@@ -701,12 +746,24 @@ export class ServiceRequestsService {
         data: taskAssignments
       });
 
-      // 4. Aprovar solicitação e vincular task
+      // 5. Atribuir funcionários à campanha (atribuição bidirecional)
+      const campaignAssignments = assignDto.employeeIds.map(employeeId => ({
+        campaignId: campaign.id,
+        employeeId,
+        assignedBy
+      }));
+
+      await tx.campaignAssignee.createMany({
+        data: campaignAssignments
+      });
+
+      // 6. Aprovar solicitação e vincular task e campanha
       const updatedRequest = await tx.serviceRequest.update({
         where: { id },
         data: {
           status: ServiceRequestStatus.APPROVED,
           taskId: task.id,
+          campaignId: campaign.id,
           approvedBy: assignedBy,
           approvedAt: new Date(),
           notes: assignDto.notes,
@@ -759,12 +816,13 @@ export class ServiceRequestsService {
         }
       });
 
-      return updatedRequest;
+      return { updatedRequest, campaign };
     });
 
     return {
-      message: 'Service request assigned and task created successfully',
-      serviceRequest: result,
+      message: 'Service request assigned, task and campaign created successfully',
+      serviceRequest: result.updatedRequest,
+      campaign: result.campaign,
       assignedEmployees: employees.map(emp => ({
         id: emp.id,
         name: emp.name,

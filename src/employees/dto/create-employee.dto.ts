@@ -1,5 +1,5 @@
 import { IsString, IsNotEmpty, IsOptional, IsDecimal, IsBoolean, IsDateString, IsArray, IsEnum } from 'class-validator';
-import { Permission } from '@prisma/client';
+import { Permission, Role } from '@prisma/client';
 
 export class CreateEmployeeDto {
   @IsString()
@@ -37,6 +37,10 @@ export class CreateEmployeeDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean = true;
+
+  @IsEnum(Role)
+  @IsOptional()
+  role?: Role = Role.EMPLOYEE; // Default to EMPLOYEE, can be ADMIN or EMPLOYEE
 
   @IsArray()
   @IsEnum(Permission, { each: true })

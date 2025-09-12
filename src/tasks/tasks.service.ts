@@ -73,6 +73,9 @@ export class TasksService {
   }
 
   async findAll(query: QueryTasksDto) {
+    // Verificar e atualizar tarefas atrasadas primeiro
+    await this.checkAndUpdateOverdueTasks();
+
     const where: any = {};
     const page = query.page || 1;
     const limit = query.limit || 20;
@@ -206,6 +209,9 @@ export class TasksService {
   }
 
   async findOne(id: string) {
+    // Verificar e atualizar tarefas atrasadas primeiro
+    await this.checkAndUpdateOverdueTasks();
+
     const task = await this.prisma.task.findUnique({
       where: { id },
       include: {
@@ -264,8 +270,24 @@ export class TasksService {
     return updatedTask;
   }
 
-  async updateStatus(id: string, updateStatusDto: UpdateTaskStatusDto) {
+  async updateStatus(id: string, updateStatusDto: UpdateTaskStatusDto, userId: string, userRole: Role) {
     const task = await this.findOne(id);
+
+    // Verificar permissões: apenas admin ou funcionários atribuídos à tarefa podem alterar status
+    if (userRole !== Role.ADMIN) {
+      const employee = await this.prisma.employee.findUnique({
+        where: { userId }
+      });
+
+      if (!employee) {
+        throw new ForbiddenException('Employee profile not found');
+      }
+
+      const isAssigned = task.assignees.some(assignee => assignee.employeeId === employee.id);
+      if (!isAssigned) {
+        throw new ForbiddenException('You can only update status of tasks assigned to you');
+      }
+    }
 
     // Se marcando como concluído, definir data de conclusão
     const completedAt = updateStatusDto.status === TaskStatus.CONCLUIDO ? new Date() : null;
@@ -418,6 +440,9 @@ export class TasksService {
   }
 
   async getKanbanBoard(clientId?: string, employeeId?: string) {
+    // Verificar e atualizar tarefas atrasadas primeiro
+    await this.checkAndUpdateOverdueTasks();
+
     const where: any = {};
 
     if (clientId) {
@@ -529,5 +554,605 @@ export class TasksService {
         return acc;
       }, {}),
     };
+  }
+
+  async findEmployeeTasks(employeeId: string, query: QueryTasksDto) {
+    // Verificar e atualizar tarefas atrasadas primeiro
+    await this.checkAndUpdateOverdueTasks();
+
+    const where: any = {
+      assignees: {
+        some: {
+          employeeId
+        }
+      }
+    };
+
+    // Apply additional filters from query
+    this.applyTaskFilters(where, query);
+
+    return this.findAllWithFilters(where, query);
+  }
+
+  async findClientTasks(clientId: string, query: QueryTasksDto) {
+    // Verificar e atualizar tarefas atrasadas primeiro
+    await this.checkAndUpdateOverdueTasks();
+
+    const where: any = {
+      clientId
+    };
+
+    // Apply additional filters from query
+    this.applyTaskFilters(where, query);
+
+    return this.findAllWithFilters(where, query);
+  }
+
+  private applyTaskFilters(where: any, query: QueryTasksDto) {
+    if (query.serviceId) {
+      where.serviceId = query.serviceId;
+    }
+
+    if (query.campaignId) {
+      where.campaignId = query.campaignId;
+    }
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.priority) {
+      where.priority = query.priority;
+    }
+
+    if (query.search) {
+      where.OR = [
+        {
+          title: {
+            contains: query.search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          description: {
+            contains: query.search,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+
+    if (query.dueDateFrom || query.dueDateTo) {
+      where.dueDate = {};
+      if (query.dueDateFrom) {
+        where.dueDate.gte = new Date(query.dueDateFrom);
+      }
+      if (query.dueDateTo) {
+        where.dueDate.lte = new Date(query.dueDateTo);
+      }
+    }
+
+    if (query.overdue) {
+      where.dueDate = {
+        lt: new Date(),
+      };
+      where.status = {
+        not: TaskStatus.CONCLUIDO
+      };
+    }
+  }
+
+  private async findAllWithFilters(where: any, query: QueryTasksDto) {
+    const page = query.page || 1;
+    const limit = query.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const orderBy: any = {};
+    if (query.sortBy === 'dueDate') {
+      orderBy.dueDate = query.sortOrder;
+    } else if (query.sortBy === 'priority') {
+      orderBy.priority = query.sortOrder;
+    } else if (query.sortBy === 'progress') {
+      orderBy.progress = query.sortOrder;
+    } else if (query.sortBy === 'title') {
+      orderBy.title = query.sortOrder;
+    } else {
+      orderBy.createdAt = query.sortOrder;
+    }
+
+    const [tasks, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          service: {
+            select: {
+              id: true,
+              displayName: true,
+              description: true,
+              credits: true
+            }
+          },
+          client: { 
+            include: { 
+              user: {
+                select: {
+                  id: true,
+                  email: true
+                }
+              }
+            } 
+          },
+          campaign: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              startDate: true,
+              endDate: true,
+              budget: true
+            }
+          },
+          assignees: {
+            include: {
+              employee: { 
+                include: { 
+                  user: {
+                    select: {
+                      id: true,
+                      email: true
+                    }
+                  }
+                } 
+              }
+            }
+          },
+          files: {
+            orderBy: { uploadedAt: 'desc' }
+          },
+          comments: {
+            include: { 
+              author: {
+                select: {
+                  id: true,
+                  email: true
+                }
+              } 
+            },
+            orderBy: { createdAt: 'desc' }
+          },
+          _count: {
+            select: {
+              comments: true,
+              files: true,
+            }
+          }
+        },
+      }),
+      this.prisma.task.count({ where }),
+    ]);
+
+    // Calculate totals for summary
+    const totalEstimatedHours = tasks.reduce((sum, task) => sum + (task.estimatedHours || 0), 0);
+    const totalSpentHours = tasks.reduce((sum, task) => sum + (task.spentHours || 0), 0);
+    const totalCreditValue = tasks.reduce((sum, task) => sum + (task.service?.credits || 0), 0);
+    const completedTasks = tasks.filter(task => task.status === TaskStatus.CONCLUIDO).length;
+    const averageProgress = tasks.length > 0 ? Math.round(tasks.reduce((sum, task) => sum + task.progress, 0) / tasks.length) : 0;
+
+    return {
+      tasks,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+      summary: {
+        totalTasks: total,
+        completedTasks,
+        completionRate: total > 0 ? Math.round((completedTasks / total) * 100) : 0,
+        averageProgress,
+        totalEstimatedHours,
+        totalSpentHours,
+        totalCreditValue
+      }
+    };
+  }
+
+  async getStatusOptions() {
+    return {
+      statuses: [
+        { value: 'BACKLOG', label: 'Backlog', description: 'Tarefa na fila' },
+        { value: 'ANDAMENTO', label: 'Em Andamento', description: 'Em progresso' },
+        { value: 'REVISAO', label: 'Em Revisão', description: 'Em revisão' },
+        { value: 'CONCLUIDO', label: 'Concluído', description: 'Finalizada' },
+        { value: 'ATRASADO', label: 'Atrasado', description: 'Fora do prazo' },
+        { value: 'ARQUIVADO', label: 'Arquivado', description: 'Arquivada' }
+      ]
+    };
+  }
+
+  async checkAndUpdateOverdueTasks() {
+    const now = new Date();
+    
+    // Buscar tarefas que passaram do prazo e não estão concluídas ou arquivadas
+    const overdueTasks = await this.prisma.task.findMany({
+      where: {
+        dueDate: {
+          lt: now
+        },
+        status: {
+          notIn: [TaskStatus.CONCLUIDO, TaskStatus.ARQUIVADO, TaskStatus.ATRASADO]
+        }
+      }
+    });
+
+    if (overdueTasks.length > 0) {
+      // Atualizar todas as tarefas atrasadas
+      await this.prisma.task.updateMany({
+        where: {
+          id: {
+            in: overdueTasks.map(task => task.id)
+          }
+        },
+        data: {
+          status: TaskStatus.ATRASADO
+        }
+      });
+
+      console.log(`Updated ${overdueTasks.length} tasks to ATRASADO status`);
+    }
+
+    return {
+      updated: overdueTasks.length,
+      tasks: overdueTasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        dueDate: task.dueDate,
+        previousStatus: task.status
+      }))
+    };
+  }
+
+  async getApprovalCenter(query: QueryTasksDto, userId: string, userRole: Role) {
+    // Verificar e atualizar tarefas atrasadas primeiro
+    await this.checkAndUpdateOverdueTasks();
+
+    const where: any = {
+      status: TaskStatus.REVISAO
+    };
+
+    if (userRole === Role.CLIENT) {
+      // Clientes só veem suas próprias tarefas em revisão
+      where.clientId = await this.getClientIdFromUser(userId);
+    } else if (userRole === Role.EMPLOYEE) {
+      // Funcionários veem tarefas onde estão atribuídos
+      const employee = await this.prisma.employee.findUnique({
+        where: { userId }
+      });
+
+      if (!employee) {
+        throw new ForbiddenException('Employee profile not found');
+      }
+
+      where.assignees = {
+        some: {
+          employeeId: employee.id
+        }
+      };
+    }
+
+    // Apply additional filters from query
+    this.applyTaskFilters(where, query);
+
+    const page = query.page || 1;
+    const limit = query.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const [tasks, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [
+          { createdAt: 'desc' }
+        ],
+        include: {
+          service: {
+            select: {
+              id: true,
+              displayName: true,
+              description: true,
+              credits: true
+            }
+          },
+          client: { 
+            include: { 
+              user: {
+                select: {
+                  id: true,
+                  email: true
+                }
+              }
+            } 
+          },
+          campaign: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              startDate: true,
+              endDate: true,
+              budget: true
+            }
+          },
+          assignees: {
+            include: {
+              employee: { 
+                include: { 
+                  user: {
+                    select: {
+                      id: true,
+                      email: true
+                    }
+                  }
+                } 
+              }
+            }
+          },
+          files: {
+            orderBy: { uploadedAt: 'desc' }
+          },
+          comments: {
+            include: { 
+              author: {
+                select: {
+                  id: true,
+                  email: true
+                }
+              } 
+            },
+            orderBy: { createdAt: 'desc' }
+          },
+          _count: {
+            select: {
+              comments: true,
+              files: true,
+            }
+          }
+        },
+      }),
+      this.prisma.task.count({ where }),
+    ]);
+
+    return {
+      tasks,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+      summary: {
+        totalPendingApproval: total,
+        userRole: userRole
+      }
+    };
+  }
+
+  async approveTask(taskId: string, comment: string | undefined, userId: string) {
+    const task = await this.findOne(taskId);
+    
+    // Verificar se é cliente e se a tarefa pertence a ele
+    const clientId = await this.getClientIdFromUser(userId);
+    if (task.clientId !== clientId) {
+      throw new ForbiddenException('You can only approve your own tasks');
+    }
+
+    // Verificar se a tarefa está em status de revisão
+    if (task.status !== TaskStatus.REVISAO) {
+      throw new BadRequestException('Task must be in REVISAO status to be approved');
+    }
+
+    // Usar transação para garantir consistência
+    return await this.prisma.$transaction(async (prisma) => {
+      // Adicionar comentário de aprovação se fornecido
+      if (comment) {
+        await prisma.taskComment.create({
+          data: {
+            taskId,
+            authorId: userId,
+            content: `[APROVAÇÃO] ${comment}`,
+          }
+        });
+      }
+
+      // Atualizar status da tarefa para ARQUIVADO
+      const updatedTask = await prisma.task.update({
+        where: { id: taskId },
+        data: {
+          status: TaskStatus.ARQUIVADO,
+          completedAt: new Date(),
+          progress: 100
+        },
+        include: {
+          campaign: true,
+          service: true,
+          client: { include: { user: true } },
+          assignees: {
+            include: {
+              employee: { include: { user: true } }
+            }
+          },
+          files: true,
+          comments: {
+            include: { author: true },
+            orderBy: { createdAt: 'desc' }
+          }
+        },
+      });
+
+      // Se a tarefa tem uma campanha associada, verificar se todas as tarefas da campanha foram aprovadas
+      let campaignArchived = false;
+      if (updatedTask.campaignId) {
+        const remainingTasks = await prisma.task.count({
+          where: {
+            campaignId: updatedTask.campaignId,
+            status: {
+              notIn: [TaskStatus.ARQUIVADO, TaskStatus.CONCLUIDO]
+            }
+          }
+        });
+
+        // Se não há mais tarefas pendentes, arquivar a campanha
+        if (remainingTasks === 0) {
+          await prisma.campaign.update({
+            where: { id: updatedTask.campaignId },
+            data: {
+              status: 'ARCHIVED'
+            }
+          });
+          campaignArchived = true;
+        }
+      }
+
+      return {
+        task: updatedTask,
+        message: 'Task approved and archived successfully',
+        campaignArchived
+      };
+    });
+  }
+
+  private async getClientIdFromUser(userId: string): Promise<string> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { client: true }
+    });
+
+    if (!user?.client) {
+      throw new ForbiddenException('Client profile not found');
+    }
+
+    return user.client.id;
+  }
+
+  async toggleStatus(id: string, userId: string, userRole: Role) {
+    const task = await this.findOne(id);
+
+    // Verificar permissões
+    if (userRole !== Role.ADMIN) {
+      const employee = await this.prisma.employee.findUnique({
+        where: { userId }
+      });
+
+      if (!employee) {
+        throw new ForbiddenException('Employee profile not found');
+      }
+
+      const isAssigned = task.assignees.some(assignee => assignee.employeeId === employee.id);
+      if (!isAssigned) {
+        throw new ForbiddenException('You can only toggle status of tasks assigned to you');
+      }
+    }
+
+    // Lógica de toggle baseada no status atual
+    let newStatus: TaskStatus;
+    let completedAt: Date | null = null;
+    let progress: number | undefined = undefined;
+
+    switch (task.status) {
+      case TaskStatus.BACKLOG:
+        newStatus = TaskStatus.ANDAMENTO;
+        break;
+      case TaskStatus.ANDAMENTO:
+        newStatus = TaskStatus.REVISAO;
+        break;
+      case TaskStatus.REVISAO:
+        newStatus = TaskStatus.CONCLUIDO;
+        completedAt = new Date();
+        progress = 100;
+        break;
+      case TaskStatus.CONCLUIDO:
+        newStatus = TaskStatus.ANDAMENTO;
+        progress = 90;
+        break;
+      case TaskStatus.ATRASADO:
+        newStatus = TaskStatus.ANDAMENTO;
+        break;
+      case TaskStatus.ARQUIVADO:
+        newStatus = TaskStatus.BACKLOG;
+        break;
+      default:
+        newStatus = TaskStatus.ANDAMENTO;
+    }
+
+    return this.prisma.task.update({
+      where: { id },
+      data: {
+        status: newStatus,
+        completedAt,
+        progress: progress !== undefined ? progress : task.progress,
+      },
+      include: {
+        service: true,
+        client: { include: { user: true } },
+        campaign: true,
+        assignees: {
+          include: {
+            employee: { include: { user: true } }
+          }
+        },
+        files: true,
+        comments: {
+          include: { author: true },
+          orderBy: { createdAt: 'desc' }
+        }
+      },
+    });
+  }
+
+  async archiveTask(id: string, userId: string, userRole: Role) {
+    const task = await this.findOne(id);
+
+    // Verificar permissões
+    if (userRole !== Role.ADMIN) {
+      const employee = await this.prisma.employee.findUnique({
+        where: { userId }
+      });
+
+      if (!employee) {
+        throw new ForbiddenException('Employee profile not found');
+      }
+
+      const isAssigned = task.assignees.some(assignee => assignee.employeeId === employee.id);
+      if (!isAssigned) {
+        throw new ForbiddenException('You can only archive tasks assigned to you');
+      }
+    }
+
+    return this.prisma.task.update({
+      where: { id },
+      data: {
+        status: TaskStatus.ARQUIVADO,
+      },
+      include: {
+        service: true,
+        client: { include: { user: true } },
+        campaign: true,
+        assignees: {
+          include: {
+            employee: { include: { user: true } }
+          }
+        },
+        files: true,
+        comments: {
+          include: { author: true },
+          orderBy: { createdAt: 'desc' }
+        }
+      },
+    });
   }
 }

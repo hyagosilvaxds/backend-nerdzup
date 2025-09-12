@@ -46,8 +46,61 @@ export class TasksController {
   }
 
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   findAll(@Query() query: QueryTasksDto) {
     return this.tasksService.findAll(query);
+  }
+
+  @Get('my-tasks')
+  @UseGuards(RolesGuard)
+  @Roles(Role.EMPLOYEE)
+  async getMyTasks(
+    @Query() query: QueryTasksDto,
+    @User('id') userId: string
+  ) {
+    // Find employee ID based on user ID
+    const employee = await this.tasksService['prisma'].employee.findUnique({
+      where: { userId }
+    });
+
+    if (!employee) {
+      throw new BadRequestException('Employee profile not found');
+    }
+
+    return this.tasksService.findEmployeeTasks(employee.id, query);
+  }
+
+  @Get('client')
+  @UseGuards(RolesGuard)
+  @Roles(Role.CLIENT)
+  async getMyClientTasks(
+    @Query() query: QueryTasksDto,
+    @User('client') client: any
+  ) {
+    if (!client?.id) {
+      throw new BadRequestException('Client profile not found');
+    }
+
+    return this.tasksService.findClientTasks(client.id, query);
+  }
+
+  @Get('client/:clientId')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CLIENT)
+  async getClientTasks(
+    @Param('clientId') clientId: string,
+    @Query() query: QueryTasksDto,
+    @User() user: any
+  ) {
+    // If user is client, they can only view their own tasks
+    if (user.role === Role.CLIENT) {
+      if (user.client?.id !== clientId) {
+        throw new BadRequestException('You can only view your own tasks');
+      }
+    }
+
+    return this.tasksService.findClientTasks(clientId, query);
   }
 
   @Get('kanban')
@@ -66,6 +119,66 @@ export class TasksController {
     return this.tasksService.getStats(clientId, employeeId);
   }
 
+  @Get('status-options')
+  getStatusOptions() {
+    return this.tasksService.getStatusOptions();
+  }
+
+  @Post('check-overdue')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @HttpCode(HttpStatus.OK)
+  async checkOverdueTasks() {
+    return this.tasksService.checkAndUpdateOverdueTasks();
+  }
+
+  @Get('approval-center')
+  @UseGuards(RolesGuard)
+  @Roles(Role.CLIENT, Role.EMPLOYEE)
+  async getApprovalCenter(
+    @Query() query: QueryTasksDto,
+    @User('id') userId: string,
+    @User('role') userRole: Role
+  ) {
+    return this.tasksService.getApprovalCenter(query, userId, userRole);
+  }
+
+  @Post(':id/approve')
+  @UseGuards(RolesGuard)
+  @Roles(Role.CLIENT)
+  @HttpCode(HttpStatus.OK)
+  async approveTask(
+    @Param('id') id: string,
+    @Body() approvalDto: { comment?: string },
+    @User('id') userId: string
+  ) {
+    return this.tasksService.approveTask(id, approvalDto.comment, userId);
+  }
+
+  @Post(':id/toggle-status')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @HttpCode(HttpStatus.OK)
+  async toggleStatus(
+    @Param('id') id: string,
+    @User('id') userId: string,
+    @User('role') userRole: Role
+  ) {
+    return this.tasksService.toggleStatus(id, userId, userRole);
+  }
+
+  @Post(':id/archive')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @HttpCode(HttpStatus.OK)
+  async archiveTask(
+    @Param('id') id: string,
+    @User('id') userId: string,
+    @User('role') userRole: Role
+  ) {
+    return this.tasksService.archiveTask(id, userId, userRole);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.tasksService.findOne(id);
@@ -82,12 +195,16 @@ export class TasksController {
   }
 
   @Patch(':id/status')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
   @HttpCode(HttpStatus.OK)
-  updateStatus(
+  async updateStatus(
     @Param('id') id: string,
-    @Body() updateStatusDto: UpdateTaskStatusDto
+    @Body() updateStatusDto: UpdateTaskStatusDto,
+    @User('id') userId: string,
+    @User('role') userRole: Role
   ) {
-    return this.tasksService.updateStatus(id, updateStatusDto);
+    return this.tasksService.updateStatus(id, updateStatusDto, userId, userRole);
   }
 
   @Patch(':id/progress')

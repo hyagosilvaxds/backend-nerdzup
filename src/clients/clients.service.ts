@@ -202,11 +202,15 @@ export class ClientsService {
         },
         campaigns: {
           include: {
-            employee: {
-              select: {
-                id: true,
-                name: true,
-                position: true,
+            assignees: {
+              include: {
+                employee: {
+                  select: {
+                    id: true,
+                    name: true,
+                    position: true,
+                  },
+                },
               },
             },
           },

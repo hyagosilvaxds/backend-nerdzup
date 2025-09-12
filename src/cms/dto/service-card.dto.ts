@@ -1,11 +1,15 @@
-import { IsString, IsUrl, IsOptional, IsNumber, Min } from 'class-validator';
+import { IsString, IsOptional, IsNumber, Min } from 'class-validator';
 
 export class CreateServiceCardDto {
   @IsString()
   title: string;
 
-  @IsUrl()
+  @IsString()
   imageUrl: string;
+
+  @IsOptional()
+  @IsString()
+  serviceId?: string;
 
   @IsOptional()
   @IsNumber()
@@ -19,8 +23,12 @@ export class UpdateServiceCardDto {
   title?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   imageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  serviceId?: string;
 
   @IsOptional()
   @IsNumber()

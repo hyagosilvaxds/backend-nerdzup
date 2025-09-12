@@ -66,7 +66,18 @@ Content-Type: application/json
       "id": "card_123",
       "title": "Marketing Digital",
       "imageUrl": "https://cdn.nerdzup.com/service-marketing.jpg",
-      "order": 1
+      "serviceId": "service_456",
+      "order": 1,
+      "service": {
+        "id": "service_456",
+        "name": "marketing-digital",
+        "displayName": "Marketing Digital",
+        "description": "Estratégias de marketing digital para aumentar sua presença online...",
+        "shortDescription": "Marketing que gera resultados",
+        "credits": 300,
+        "estimatedDays": 10,
+        "difficulty": "BEGINNER"
+      }
     }
   ],
   "processSteps": [
@@ -179,6 +190,36 @@ Content-Type: application/json
 
 ## 🎴 Service Cards Management
 
+### Get All Service Cards
+**GET** `/cms/service-cards`
+
+**Permissões**: `ADMIN` e `EMPLOYEE`
+
+##### Response (200 OK)
+```json
+[
+  {
+    "id": "card_456",
+    "title": "Desenvolvimento Web",
+    "imageUrl": "https://cdn.nerdzup.com/service-web.jpg",
+    "serviceId": "service_123",
+    "order": 1,
+    "createdAt": "2024-01-15T16:00:00.000Z",
+    "updatedAt": "2024-01-15T16:00:00.000Z",
+    "service": {
+      "id": "service_123",
+      "name": "desenvolvimento-web",
+      "displayName": "Desenvolvimento Web",
+      "description": "Criação de websites profissionais...",
+      "shortDescription": "Sites profissionais e responsivos",
+      "credits": 500,
+      "estimatedDays": 15,
+      "difficulty": "INTERMEDIATE"
+    }
+  }
+]
+```
+
 ### Create Service Card
 **POST** `/cms/service-cards`
 
@@ -189,6 +230,7 @@ Content-Type: application/json
 {
   "title": "Desenvolvimento Web",
   "imageUrl": "https://cdn.nerdzup.com/service-web.jpg",
+  "serviceId": "service_123",
   "order": 1
 }
 ```
@@ -199,6 +241,7 @@ Content-Type: application/json
   "id": "card_456",
   "title": "Desenvolvimento Web",
   "imageUrl": "https://cdn.nerdzup.com/service-web.jpg",
+  "serviceId": "service_123",
   "order": 1,
   "createdAt": "2024-01-15T16:00:00.000Z",
   "updatedAt": "2024-01-15T16:00:00.000Z"
@@ -215,6 +258,7 @@ Content-Type: application/json
 {
   "title": "Desenvolvimento Web Completo",
   "imageUrl": "https://cdn.nerdzup.com/service-web-updated.jpg",
+  "serviceId": "service_456",
   "order": 2
 }
 ```
@@ -225,6 +269,7 @@ Content-Type: application/json
   "id": "card_456",
   "title": "Desenvolvimento Web Completo",
   "imageUrl": "https://cdn.nerdzup.com/service-web-updated.jpg",
+  "serviceId": "service_456",
   "order": 2,
   "updatedAt": "2024-01-15T16:30:00.000Z"
 }
@@ -659,6 +704,16 @@ const ServiceCards: React.FC = () => {
           <div key={card.id} className="service-card">
             <img src={card.imageUrl} alt={card.title} />
             <h3>{card.title}</h3>
+            {card.service && (
+              <div className="service-details">
+                <p className="service-description">{card.service.shortDescription}</p>
+                <div className="service-meta">
+                  <span className="credits">{card.service.credits} créditos</span>
+                  <span className="duration">{card.service.estimatedDays} dias</span>
+                  <span className="difficulty">{card.service.difficulty}</span>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

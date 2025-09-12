@@ -1,7 +1,7 @@
-import { IsString, IsUrl, IsOptional, IsNumber, Min } from 'class-validator';
+import { IsString, IsOptional, IsNumber, Min } from 'class-validator';
 
 export class CreateClientLogoDto {
-  @IsUrl()
+  @IsString()
   imageUrl: string;
 
   @IsOptional()
@@ -16,7 +16,7 @@ export class CreateClientLogoDto {
 
 export class UpdateClientLogoDto {
   @IsOptional()
-  @IsUrl()
+  @IsString()
   imageUrl?: string;
 
   @IsOptional()
