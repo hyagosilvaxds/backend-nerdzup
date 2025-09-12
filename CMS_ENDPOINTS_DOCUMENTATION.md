@@ -484,6 +484,66 @@ Content-Type: application/json
 
 ---
 
+## 📁 Upload Management
+
+### Upload Company Logo
+**POST** `/cms/upload/logo`
+
+**Permissões**: Apenas `ADMIN`
+
+**Content-Type**: `multipart/form-data`
+
+Este endpoint permite fazer upload do logo da empresa, que será usado no cabeçalho do site. Substitui automaticamente o logo anterior.
+
+##### Request Body (FormData)
+```
+logo: [File] (PNG, JPEG, JPG, SVG, WebP - max 5MB)
+```
+
+##### Response (200 OK)
+```json
+{
+  "message": "Logo uploaded successfully",
+  "logoUrl": "/uploads/logo/logo-abc123-def456.png",
+  "config": {
+    "id": "config_123",
+    "logoUrl": "/uploads/logo/logo-abc123-def456.png",
+    "updatedAt": "2024-01-15T21:00:00.000Z",
+    "updatedBy": "admin_456"
+  }
+}
+```
+
+### Upload Generic Image
+**POST** `/cms/upload/image`
+
+**Permissões**: Apenas `ADMIN`
+
+**Content-Type**: `multipart/form-data`
+
+Este endpoint permite fazer upload de imagens genéricas para uso em service cards, process steps, success cases, etc. Retorna a URL para ser usada nos respectivos campos.
+
+##### Request Body (FormData)
+```
+image: [File] (PNG, JPEG, JPG, SVG, WebP - max 10MB)
+```
+
+##### Response (200 OK)
+```json
+{
+  "message": "Image uploaded successfully",
+  "imageUrl": "/uploads/cms/cms-abc123-def456.jpg",
+  "filename": "cms-abc123-def456.jpg",
+  "originalName": "service-marketing.jpg",
+  "mimeType": "image/jpeg",
+  "size": 1024000,
+  "uploadedAt": "2024-01-15T21:30:00.000Z",
+  "uploadedBy": "admin_456"
+}
+```
+
+---
+
 ## 🎭 Favicon Management
 
 ### Upload Favicon
@@ -721,6 +781,33 @@ export const useAdminCms = () => {
     }
   };
 
+  const fileUpload = async (url: string, file: File, fieldName: string) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const formData = new FormData();
+      formData.append(fieldName, file);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+          // Don't set Content-Type for FormData - browser sets it automatically
+        },
+        body: formData
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateConfig = (configData: Partial<WebsiteConfig>) =>
     apiCall('/api/cms/config', {
       method: 'PUT',
@@ -739,13 +826,163 @@ export const useAdminCms = () => {
       body: JSON.stringify(faqData)
     });
 
+  // Upload methods
+  const uploadLogo = (file: File) => 
+    fileUpload('/api/cms/upload/logo', file, 'logo');
+
+  const uploadImage = (file: File) => 
+    fileUpload('/api/cms/upload/image', file, 'image');
+
+  const uploadFavicon = (file: File) => 
+    fileUpload('/api/cms/favicon', file, 'favicon');
+
   return {
     loading,
     error,
     updateConfig,
     createServiceCard,
-    createFaqItem
+    createFaqItem,
+    uploadLogo,
+    uploadImage,
+    uploadFavicon
   };
+};
+```
+
+### 6. File Upload Component (React)
+```tsx
+import { useState, useRef } from 'react';
+
+interface FileUploadProps {
+  onUpload: (file: File) => Promise<any>;
+  accept: string;
+  maxSize: number; // in MB
+  label: string;
+  currentUrl?: string;
+}
+
+const FileUpload: React.FC<FileUploadProps> = ({ 
+  onUpload, 
+  accept, 
+  maxSize, 
+  label, 
+  currentUrl 
+}) => {
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(currentUrl || null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size
+    if (file.size > maxSize * 1024 * 1024) {
+      alert(`Arquivo muito grande. Tamanho máximo: ${maxSize}MB`);
+      return;
+    }
+
+    // Create preview
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => setPreview(e.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+
+    try {
+      setUploading(true);
+      const result = await onUpload(file);
+      
+      // Update preview with server URL if available
+      if (result.logoUrl || result.imageUrl || result.faviconUrl) {
+        setPreview(result.logoUrl || result.imageUrl || result.faviconUrl);
+      }
+      
+      alert('Upload realizado com sucesso!');
+    } catch (error) {
+      alert('Erro no upload. Tente novamente.');
+      console.error('Upload error:', error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="file-upload">
+      <label className="upload-label">{label}</label>
+      
+      {preview && (
+        <div className="preview">
+          <img 
+            src={preview} 
+            alt="Preview" 
+            style={{ maxWidth: '200px', maxHeight: '100px', objectFit: 'contain' }}
+          />
+        </div>
+      )}
+      
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={accept}
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
+      />
+      
+      <button 
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        className="upload-btn"
+      >
+        {uploading ? 'Enviando...' : 'Escolher Arquivo'}
+      </button>
+      
+      <small className="upload-info">
+        Formatos aceitos: {accept}. Tamanho máximo: {maxSize}MB
+      </small>
+    </div>
+  );
+};
+
+// Usage examples:
+const LogoUpload = () => {
+  const { uploadLogo } = useAdminCms();
+  
+  return (
+    <FileUpload
+      onUpload={uploadLogo}
+      accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+      maxSize={5}
+      label="Logo da Empresa"
+      currentUrl="/uploads/logo/current-logo.png"
+    />
+  );
+};
+
+const ImageUpload = () => {
+  const { uploadImage } = useAdminCms();
+  
+  return (
+    <FileUpload
+      onUpload={uploadImage}
+      accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+      maxSize={10}
+      label="Imagem para CMS"
+    />
+  );
+};
+
+const FaviconUpload = () => {
+  const { uploadFavicon } = useAdminCms();
+  
+  return (
+    <FileUpload
+      onUpload={uploadFavicon}
+      accept="image/x-icon,image/png,image/jpeg,image/svg+xml"
+      maxSize={2}
+      label="Favicon do Site"
+    />
+  );
 };
 ```
 

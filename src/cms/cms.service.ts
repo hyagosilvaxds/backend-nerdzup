@@ -15,7 +15,7 @@ export class CmsService {
 
   // =============== WEBSITE CONFIG ===============
 
-  async getOrCreateWebsiteConfig() {
+  async getOrCreateWebsiteConfig(userId?: string) {
     let config = await this.prisma.websiteConfig.findFirst({
       include: {
         serviceCards: { orderBy: { order: 'asc' } },
@@ -26,11 +26,11 @@ export class CmsService {
       },
     });
 
-    if (!config) {
+    if (!config && userId) {
       // Create default config if none exists
       config = await this.prisma.websiteConfig.create({
         data: {
-          updatedBy: 'system', // This should be replaced with actual user ID
+          updatedBy: userId,
         },
         include: {
           serviceCards: { orderBy: { order: 'asc' } },
@@ -42,11 +42,15 @@ export class CmsService {
       });
     }
 
+    if (!config) {
+      throw new Error('Website configuration not found and cannot be created without user ID');
+    }
+    
     return config;
   }
 
   async updateWebsiteConfig(updateDto: UpdateWebsiteConfigDto, updatedBy: string) {
-    const config = await this.getOrCreateWebsiteConfig();
+    const config = await this.getOrCreateWebsiteConfig(updatedBy);
 
     return this.prisma.websiteConfig.update({
       where: { id: config.id },
@@ -65,13 +69,27 @@ export class CmsService {
   }
 
   async getPublicWebsiteConfig() {
-    return this.getOrCreateWebsiteConfig();
+    return this.prisma.websiteConfig.findFirst({
+      include: {
+        serviceCards: { orderBy: { order: 'asc' } },
+        processSteps: { orderBy: { order: 'asc' } },
+        successCases: { orderBy: { order: 'asc' } },
+        clientLogos: { orderBy: { order: 'asc' } },
+        faqItems: { orderBy: { order: 'asc' } },
+      },
+    });
   }
 
   // =============== SERVICE CARDS ===============
 
-  async createServiceCard(createDto: CreateServiceCardDto) {
-    const config = await this.getOrCreateWebsiteConfig();
+  async getServiceCards() {
+    return this.prisma.serviceCard.findMany({
+      orderBy: { order: 'asc' },
+    });
+  }
+
+  async createServiceCard(createDto: CreateServiceCardDto, userId: string) {
+    const config = await this.getOrCreateWebsiteConfig(userId);
 
     return this.prisma.serviceCard.create({
       data: {
@@ -114,8 +132,8 @@ export class CmsService {
 
   // =============== PROCESS STEPS ===============
 
-  async createProcessStep(createDto: CreateProcessStepDto) {
-    const config = await this.getOrCreateWebsiteConfig();
+  async createProcessStep(createDto: CreateProcessStepDto, userId: string) {
+    const config = await this.getOrCreateWebsiteConfig(userId);
 
     return this.prisma.processStep.create({
       data: {
@@ -158,8 +176,8 @@ export class CmsService {
 
   // =============== SUCCESS CASES ===============
 
-  async createSuccessCase(createDto: CreateSuccessCaseDto) {
-    const config = await this.getOrCreateWebsiteConfig();
+  async createSuccessCase(createDto: CreateSuccessCaseDto, userId: string) {
+    const config = await this.getOrCreateWebsiteConfig(userId);
 
     return this.prisma.successCase.create({
       data: {
@@ -202,8 +220,8 @@ export class CmsService {
 
   // =============== CLIENT LOGOS ===============
 
-  async createClientLogo(createDto: CreateClientLogoDto) {
-    const config = await this.getOrCreateWebsiteConfig();
+  async createClientLogo(createDto: CreateClientLogoDto, userId: string) {
+    const config = await this.getOrCreateWebsiteConfig(userId);
 
     return this.prisma.clientLogo.create({
       data: {
@@ -246,8 +264,8 @@ export class CmsService {
 
   // =============== FAQ ITEMS ===============
 
-  async createFaqItem(createDto: CreateFaqItemDto) {
-    const config = await this.getOrCreateWebsiteConfig();
+  async createFaqItem(createDto: CreateFaqItemDto, userId: string) {
+    const config = await this.getOrCreateWebsiteConfig(userId);
 
     return this.prisma.faqItem.create({
       data: {
@@ -350,13 +368,44 @@ export class CmsService {
     return { message: 'FAQ items reordered successfully' };
   }
 
-  // =============== FAVICON MANAGEMENT ===============
+  // =============== UPLOAD MANAGEMENT ===============
+
+  async uploadLogo(file: Express.Multer.File, updatedBy: string) {
+    const logoUrl = `/uploads/logo/${file.filename}`;
+    
+    // Get current config to check if there's an existing logo
+    const config = await this.getOrCreateWebsiteConfig(updatedBy);
+    
+    // Delete old logo file if exists
+    if (config.logoUrl) {
+      const oldFilePath = path.join('.', config.logoUrl);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+    }
+    
+    // Update config with new logo URL
+    const updatedConfig = await this.prisma.websiteConfig.update({
+      where: { id: config.id },
+      data: {
+        logoUrl,
+        updatedBy,
+        updatedAt: new Date(),
+      },
+    });
+    
+    return {
+      message: 'Logo uploaded successfully',
+      logoUrl,
+      config: updatedConfig,
+    };
+  }
 
   async uploadFavicon(file: Express.Multer.File, updatedBy: string) {
     const faviconUrl = `/uploads/favicon/${file.filename}`;
     
     // Get current config to check if there's an existing favicon
-    const config = await this.getOrCreateWebsiteConfig();
+    const config = await this.getOrCreateWebsiteConfig(updatedBy);
     
     // Delete old favicon file if exists
     if (config.faviconUrl) {
@@ -382,15 +431,31 @@ export class CmsService {
     };
   }
 
-  async getCurrentFavicon() {
-    const config = await this.getOrCreateWebsiteConfig();
+  async uploadImage(file: Express.Multer.File, updatedBy: string) {
+    const imageUrl = `/uploads/cms/${file.filename}`;
+    
+    // Return the uploaded image URL - this is a generic upload that doesn't update any specific config
     return {
-      faviconUrl: config.faviconUrl,
+      message: 'Image uploaded successfully',
+      imageUrl,
+      filename: file.filename,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      uploadedAt: new Date(),
+      uploadedBy: updatedBy,
+    };
+  }
+
+  async getCurrentFavicon() {
+    const config = await this.prisma.websiteConfig.findFirst();
+    return {
+      faviconUrl: config?.faviconUrl || null,
     };
   }
 
   async removeFavicon(updatedBy: string) {
-    const config = await this.getOrCreateWebsiteConfig();
+    const config = await this.getOrCreateWebsiteConfig(updatedBy);
     
     if (!config.faviconUrl) {
       throw new NotFoundException('No favicon found');

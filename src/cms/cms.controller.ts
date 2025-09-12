@@ -36,8 +36,8 @@ export class CmsController {
 
   @Get('config')
   @Roles(Role.ADMIN, Role.EMPLOYEE)
-  async getWebsiteConfig() {
-    return this.cmsService.getOrCreateWebsiteConfig();
+  async getWebsiteConfig(@Request() req) {
+    return this.cmsService.getOrCreateWebsiteConfig(req.user.id);
   }
 
   @Put('config')
@@ -53,10 +53,16 @@ export class CmsController {
 
   // =============== SERVICE CARDS ===============
 
+  @Get('service-cards')
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  async getServiceCards() {
+    return this.cmsService.getServiceCards();
+  }
+
   @Post('service-cards')
   @Roles(Role.ADMIN)
-  async createServiceCard(@Body() createDto: CreateServiceCardDto) {
-    return this.cmsService.createServiceCard(createDto);
+  async createServiceCard(@Body() createDto: CreateServiceCardDto, @Request() req) {
+    return this.cmsService.createServiceCard(createDto, req.user.id);
   }
 
   @Put('service-cards/:id')
@@ -81,8 +87,8 @@ export class CmsController {
 
   @Post('process-steps')
   @Roles(Role.ADMIN)
-  async createProcessStep(@Body() createDto: CreateProcessStepDto) {
-    return this.cmsService.createProcessStep(createDto);
+  async createProcessStep(@Body() createDto: CreateProcessStepDto, @Request() req) {
+    return this.cmsService.createProcessStep(createDto, req.user.id);
   }
 
   @Put('process-steps/:id')
@@ -107,8 +113,8 @@ export class CmsController {
 
   @Post('success-cases')
   @Roles(Role.ADMIN)
-  async createSuccessCase(@Body() createDto: CreateSuccessCaseDto) {
-    return this.cmsService.createSuccessCase(createDto);
+  async createSuccessCase(@Body() createDto: CreateSuccessCaseDto, @Request() req) {
+    return this.cmsService.createSuccessCase(createDto, req.user.id);
   }
 
   @Put('success-cases/:id')
@@ -133,8 +139,8 @@ export class CmsController {
 
   @Post('client-logos')
   @Roles(Role.ADMIN)
-  async createClientLogo(@Body() createDto: CreateClientLogoDto) {
-    return this.cmsService.createClientLogo(createDto);
+  async createClientLogo(@Body() createDto: CreateClientLogoDto, @Request() req) {
+    return this.cmsService.createClientLogo(createDto, req.user.id);
   }
 
   @Put('client-logos/:id')
@@ -159,8 +165,8 @@ export class CmsController {
 
   @Post('faq-items')
   @Roles(Role.ADMIN)
-  async createFaqItem(@Body() createDto: CreateFaqItemDto) {
-    return this.cmsService.createFaqItem(createDto);
+  async createFaqItem(@Body() createDto: CreateFaqItemDto, @Request() req) {
+    return this.cmsService.createFaqItem(createDto, req.user.id);
   }
 
   @Put('faq-items/:id')
@@ -181,7 +187,36 @@ export class CmsController {
     return this.cmsService.reorderFaqItems(ids);
   }
 
-  // =============== FAVICON MANAGEMENT ===============
+  // =============== UPLOAD MANAGEMENT ===============
+
+  @Post('upload/logo')
+  @Roles(Role.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('logo', {
+      storage: diskStorage({
+        destination: './uploads/logo',
+        filename: (req, file, callback) => {
+          const fileExtName = extname(file.originalname);
+          const fileName = `logo-${uuidv4()}${fileExtName}`;
+          callback(null, fileName);
+        },
+      }),
+      fileFilter: (req, file, callback) => {
+        if (file.mimetype.match(/\/(png|jpeg|jpg|svg|webp)$/)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Only PNG, JPEG, JPG, SVG and WebP files are allowed for logo!'), false);
+        }
+      },
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for logo
+    }),
+  )
+  async uploadLogo(@UploadedFile() file: Express.Multer.File, @Request() req) {
+    if (!file) {
+      throw new Error('No logo file provided');
+    }
+    return this.cmsService.uploadLogo(file, req.user.id);
+  }
 
   @Post('favicon')
   @Roles(Role.ADMIN)
@@ -210,6 +245,35 @@ export class CmsController {
       throw new Error('No favicon file provided');
     }
     return this.cmsService.uploadFavicon(file, req.user.id);
+  }
+
+  @Post('upload/image')
+  @Roles(Role.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: './uploads/cms',
+        filename: (req, file, callback) => {
+          const fileExtName = extname(file.originalname);
+          const fileName = `cms-${uuidv4()}${fileExtName}`;
+          callback(null, fileName);
+        },
+      }),
+      fileFilter: (req, file, callback) => {
+        if (file.mimetype.match(/\/(png|jpeg|jpg|svg|webp)$/)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Only PNG, JPEG, JPG, SVG and WebP files are allowed!'), false);
+        }
+      },
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for general images
+    }),
+  )
+  async uploadImage(@UploadedFile() file: Express.Multer.File, @Request() req) {
+    if (!file) {
+      throw new Error('No image file provided');
+    }
+    return this.cmsService.uploadImage(file, req.user.id);
   }
 
   @Get('favicon')
