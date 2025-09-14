@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import { BroadcastNotificationDto } from './dto/broadcast-notification.dto';
 import { QueryNotificationsDto } from './dto/query-notifications.dto';
 import { NotificationType, NotificationPriority } from '@prisma/client';
 
@@ -11,6 +12,20 @@ export class NotificationsService {
   // =============== CRUD OPERATIONS ===============
 
   async createNotification(createDto: CreateNotificationDto) {
+    // Validar se o recipientId foi fornecido e não está vazio
+    if (!createDto.recipientId || createDto.recipientId.trim() === '') {
+      throw new BadRequestException('recipientId is required and cannot be empty');
+    }
+
+    // Verificar se o usuário destinatário existe
+    const recipient = await this.prisma.user.findUnique({
+      where: { id: createDto.recipientId }
+    });
+
+    if (!recipient) {
+      throw new NotFoundException(`User with id ${createDto.recipientId} not found`);
+    }
+
     return this.prisma.notification.create({
       data: {
         recipientId: createDto.recipientId,
@@ -36,6 +51,51 @@ export class NotificationsService {
   }
 
   async createBulkNotifications(notifications: CreateNotificationDto[]) {
+    // Validar se o array não está vazio
+    if (!notifications || notifications.length === 0) {
+      throw new BadRequestException('Notifications array cannot be empty');
+    }
+
+    // Validar cada notificação antes de processar
+    for (let i = 0; i < notifications.length; i++) {
+      const notification = notifications[i];
+      
+      if (!notification.recipientId || notification.recipientId.trim() === '') {
+        throw new BadRequestException(
+          `Notification at index ${i} is missing recipientId. Each notification must have a valid recipientId.`
+        );
+      }
+
+      if (!notification.type) {
+        throw new BadRequestException(
+          `Notification at index ${i} is missing type. Each notification must have a valid type.`
+        );
+      }
+
+      if (!notification.title || notification.title.trim() === '') {
+        throw new BadRequestException(
+          `Notification at index ${i} is missing title. Each notification must have a title.`
+        );
+      }
+
+      if (!notification.message || notification.message.trim() === '') {
+        throw new BadRequestException(
+          `Notification at index ${i} is missing message. Each notification must have a message.`
+        );
+      }
+
+      // Verificar se o usuário destinatário existe
+      const recipient = await this.prisma.user.findUnique({
+        where: { id: notification.recipientId }
+      });
+
+      if (!recipient) {
+        throw new NotFoundException(
+          `User with id ${notification.recipientId} not found for notification at index ${i}`
+        );
+      }
+    }
+
     const createdNotifications = await this.prisma.$transaction(
       notifications.map(notification =>
         this.prisma.notification.create({
@@ -56,6 +116,81 @@ export class NotificationsService {
     return {
       count: createdNotifications.length,
       notifications: createdNotifications,
+    };
+  }
+
+  async broadcastNotification(broadcastDto: BroadcastNotificationDto) {
+    const { targetRoles, type, title, message, data, actionUrl, priority, expiresAt } = broadcastDto;
+
+    // Validar se pelo menos um role foi especificado
+    if (!targetRoles || targetRoles.length === 0) {
+      throw new BadRequestException('At least one target role must be specified');
+    }
+
+    // Buscar todos os usuários ativos com os roles especificados
+    const targetUsers = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        role: {
+          in: targetRoles
+        }
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true
+      }
+    });
+
+    if (targetUsers.length === 0) {
+      return {
+        message: 'No active users found for the specified roles',
+        targetRoles,
+        count: 0,
+        notifications: []
+      };
+    }
+
+    // Criar notificações para todos os usuários encontrados
+    const notifications = targetUsers.map(user => ({
+      recipientId: user.id,
+      type,
+      title,
+      message,
+      data,
+      actionUrl,
+      priority: priority || NotificationPriority.MEDIUM,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+    }));
+
+    const createdNotifications = await this.prisma.$transaction(
+      notifications.map(notification =>
+        this.prisma.notification.create({
+          data: notification,
+          include: {
+            recipient: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+                profilePhoto: true,
+              },
+            },
+          },
+        })
+      )
+    );
+
+    return {
+      message: `Broadcast notification sent to ${createdNotifications.length} users`,
+      targetRoles,
+      count: createdNotifications.length,
+      notifications: createdNotifications,
+      recipients: targetUsers.map(user => ({
+        id: user.id,
+        email: user.email,
+        role: user.role
+      }))
     };
   }
 
@@ -321,5 +456,37 @@ export class NotificationsService {
       priority: NotificationPriority.MEDIUM,
       data: { remainingCredits },
     });
+  }
+
+  // =============== DEBUG METHODS ===============
+
+  async getAvailableRecipients() {
+    const users = await this.prisma.user.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        client: {
+          select: {
+            fullName: true,
+            companyName: true
+          }
+        },
+        employee: {
+          select: {
+            name: true
+          }
+        }
+      },
+      orderBy: { email: 'asc' }
+    });
+
+    return users.map(user => ({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.client?.fullName || user.client?.companyName || user.employee?.name || 'N/A'
+    }));
   }
 }

@@ -1,10 +1,10 @@
-import { IsString, IsEnum, IsOptional, IsDateString, IsNotEmpty, IsObject } from 'class-validator';
-import { NotificationType, NotificationPriority } from '@prisma/client';
+import { IsString, IsEnum, IsOptional, IsDateString, IsObject, IsArray } from 'class-validator';
+import { NotificationType, NotificationPriority, Role } from '@prisma/client';
 
-export class CreateNotificationDto {
-  @IsString()
-  @IsNotEmpty()
-  recipientId: string;
+export class BroadcastNotificationDto {
+  @IsArray()
+  @IsEnum(Role, { each: true })
+  targetRoles: Role[];
 
   @IsEnum(NotificationType)
   type: NotificationType;

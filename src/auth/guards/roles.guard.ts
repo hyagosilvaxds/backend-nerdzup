@@ -17,6 +17,24 @@ export class RolesGuard implements CanActivate {
     }
 
     const { user } = context.switchToHttp().getRequest();
-    return requiredRoles.some((role) => user.role === role);
+    const userRole = user.role;
+
+    // Verificar se o usuário tem o role exato requerido
+    if (requiredRoles.some((role) => userRole === role)) {
+      return true;
+    }
+
+    // Tratar EMPLOYEE com as mesmas permissões que ADMIN
+    // Se ADMIN é requerido e o usuário é EMPLOYEE, permitir acesso
+    if (userRole === Role.EMPLOYEE && requiredRoles.includes(Role.ADMIN)) {
+      return true;
+    }
+
+    // Se EMPLOYEE é requerido e o usuário é ADMIN, permitir acesso também
+    if (userRole === Role.ADMIN && requiredRoles.includes(Role.EMPLOYEE)) {
+      return true;
+    }
+
+    return false;
   }
 }

@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import { CreateBulkNotificationsDto } from './dto/create-bulk-notifications.dto';
+import { BroadcastNotificationDto } from './dto/broadcast-notification.dto';
 import { QueryNotificationsDto } from './dto/query-notifications.dto';
 import { MarkNotificationsReadDto } from './dto/mark-read.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -89,8 +91,15 @@ export class NotificationsController {
   @Post('bulk')
   @Roles(Role.ADMIN, Role.EMPLOYEE)
   @UseGuards(RolesGuard)
-  async createBulkNotifications(@Body() notifications: CreateNotificationDto[]) {
-    return this.notificationsService.createBulkNotifications(notifications);
+  async createBulkNotifications(@Body() bulkDto: CreateBulkNotificationsDto) {
+    return this.notificationsService.createBulkNotifications(bulkDto.notifications);
+  }
+
+  @Post('broadcast')
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @UseGuards(RolesGuard)
+  async broadcastNotification(@Body() broadcastDto: BroadcastNotificationDto) {
+    return this.notificationsService.broadcastNotification(broadcastDto);
   }
 
   @Delete('cleanup/expired')
@@ -98,5 +107,14 @@ export class NotificationsController {
   @UseGuards(RolesGuard)
   async cleanExpiredNotifications() {
     return this.notificationsService.cleanExpiredNotifications();
+  }
+
+  // =============== DEBUG ENDPOINT ===============
+
+  @Get('debug/recipients')
+  @Roles(Role.ADMIN)
+  @UseGuards(RolesGuard)
+  async getAvailableRecipients() {
+    return this.notificationsService.getAvailableRecipients();
   }
 }

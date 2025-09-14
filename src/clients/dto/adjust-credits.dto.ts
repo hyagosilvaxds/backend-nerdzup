@@ -1,8 +1,7 @@
-import { IsNumber, IsString, IsOptional, Min } from 'class-validator';
+import { IsNumber, IsString, IsOptional } from 'class-validator';
 
 export class AdjustCreditsDto {
   @IsNumber()
-  @Min(1)
   credits: number;
 
   @IsString()

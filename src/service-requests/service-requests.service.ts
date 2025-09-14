@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingService } from '../billing/billing.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { UpdateServiceRequestDto } from './dto/update-service-request.dto';
 import { ApproveServiceRequestDto, RejectServiceRequestDto } from './dto/approve-service-request.dto';
@@ -12,7 +13,8 @@ import { ServiceRequestStatus, TaskStatus } from '@prisma/client';
 export class ServiceRequestsService {
   constructor(
     private prisma: PrismaService,
-    private billingService: BillingService
+    private billingService: BillingService,
+    private notificationsService: NotificationsService
   ) {}
 
   // =============== CLIENT METHODS ===============
@@ -540,6 +542,18 @@ export class ServiceRequestsService {
       return { serviceRequest: updatedRequest, task, campaign };
     });
 
+    // Enviar notificação para o cliente sobre a aprovação
+    try {
+      await this.notificationsService.notifyServiceRequestApproved(
+        result.serviceRequest.id,
+        result.serviceRequest.clientId,
+        result.serviceRequest.service.displayName
+      );
+    } catch (error) {
+      console.error('Erro ao enviar notificação de aprovação:', error);
+      // Não falha a operação se a notificação falhar
+    }
+
     return result;
   }
 
@@ -590,6 +604,19 @@ export class ServiceRequestsService {
         }
       }
     });
+
+    // Enviar notificação para o cliente sobre a rejeição
+    try {
+      await this.notificationsService.notifyServiceRequestRejected(
+        rejectedRequest.id,
+        rejectedRequest.clientId,
+        rejectedRequest.service.displayName,
+        rejectDto.rejectionReason
+      );
+    } catch (error) {
+      console.error('Erro ao enviar notificação de rejeição:', error);
+      // Não falha a operação se a notificação falhar
+    }
 
     return rejectedRequest;
   }

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingService } from '../billing/billing.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -17,7 +18,8 @@ import * as path from 'path';
 export class ClientsService {
   constructor(
     private prisma: PrismaService,
-    private billingService: BillingService
+    private billingService: BillingService,
+    private notificationsService: NotificationsService
   ) {}
 
   async create(createClientDto: CreateClientDto) {
@@ -742,7 +744,8 @@ export class ClientsService {
       where: { id: wallet.id },
       data: {
         availableCredits: wallet.availableCredits + credits,
-        totalEarned: wallet.totalEarned + credits,
+        totalEarned: credits > 0 ? wallet.totalEarned + credits : wallet.totalEarned,
+        totalSpent: credits < 0 ? wallet.totalSpent + Math.abs(credits) : wallet.totalSpent,
       },
     });
 
@@ -763,10 +766,46 @@ export class ClientsService {
     await this.prisma.clientNote.create({
       data: {
         clientId,
-        note: `Créditos ajustados: +${credits} créditos. Motivo: ${reason || 'Ajuste manual'}`,
+        note: `Créditos ajustados: ${credits > 0 ? '+' : ''}${credits} créditos. Motivo: ${reason || 'Ajuste manual'}`,
         authorId: adminId,
       },
     });
+
+    // Enviar notificação para o cliente sobre o ajuste de créditos
+    try {
+      if (credits > 0) {
+        await this.notificationsService.createNotification({
+          recipientId: client.userId,
+          type: 'CREDITS_ADJUSTMENT' as any, // Tipo adicionado ao enum
+          title: 'Créditos Adicionados',
+          message: `${credits} créditos foram adicionados à sua conta. Motivo: ${reason || 'Ajuste manual'}`,
+          priority: 'MEDIUM' as any,
+          data: { 
+            credits, 
+            reason: reason || 'Ajuste manual',
+            adjustedBy: adminId,
+            newBalance: updatedWallet.availableCredits
+          }
+        });
+      } else {
+        await this.notificationsService.createNotification({
+          recipientId: client.userId,
+          type: 'CREDITS_ADJUSTMENT' as any, // Tipo adicionado ao enum
+          title: 'Créditos Deduzidos',
+          message: `${Math.abs(credits)} créditos foram deduzidos da sua conta. Motivo: ${reason || 'Ajuste manual'}`,
+          priority: 'HIGH' as any,
+          data: { 
+            credits, 
+            reason: reason || 'Ajuste manual',
+            adjustedBy: adminId,
+            newBalance: updatedWallet.availableCredits
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao enviar notificação de ajuste de créditos:', error);
+      // Não falha a operação se a notificação falhar
+    }
 
     return {
       message: 'Créditos ajustados com sucesso',

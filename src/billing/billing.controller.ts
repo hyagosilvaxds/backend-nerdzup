@@ -109,11 +109,11 @@ export class BillingController {
   // =============== CLIENT WALLET ===============
 
   @Get('wallet')
-  getMyWallet(@User('clientId') clientId: string) {
-    if (!clientId) {
+  getMyWallet(@User('client') client: any) {
+    if (!client) {
       return { error: 'Only clients can access wallet' };
     }
-    return this.billingService.getWalletBalance(clientId);
+    return this.billingService.getWalletBalance(client.id);
   }
 
   @Get('wallet/:clientId')
@@ -140,20 +140,20 @@ export class BillingController {
   @Post('subscriptions')
   createSubscription(
     @Body() createSubscriptionDto: CreateSubscriptionDto,
-    @User('clientId') clientId: string
+    @User('client') client: any
   ) {
-    if (!clientId) {
+    if (!client) {
       return { error: 'Only clients can create subscriptions' };
     }
-    return this.billingService.createSubscription(clientId, createSubscriptionDto);
+    return this.billingService.createSubscription(client.id, createSubscriptionDto);
   }
 
   @Get('subscriptions')
-  getMySubscriptions(@User('clientId') clientId: string) {
-    if (!clientId) {
+  getMySubscriptions(@User('client') client: any) {
+    if (!client) {
       return { error: 'Only clients can access subscriptions' };
     }
-    return this.billingService.getClientSubscriptions(clientId);
+    return this.billingService.getClientSubscriptions(client.id);
   }
 
   @Get('subscriptions/:clientId')
@@ -165,8 +165,8 @@ export class BillingController {
 
   @Post('subscriptions/:id/cancel')
   @HttpCode(HttpStatus.OK)
-  cancelSubscription(@Param('id') subscriptionId: string, @User('clientId') clientId: string) {
-    if (!clientId) {
+  cancelSubscription(@Param('id') subscriptionId: string, @User('client') client: any) {
+    if (!client) {
       return { error: 'Only clients can cancel subscriptions' };
     }
     return this.billingService.cancelSubscription(subscriptionId);
@@ -177,9 +177,9 @@ export class BillingController {
   changeSubscriptionPlan(
     @Param('id') subscriptionId: string,
     @Body() changeDto: PurchaseSubscriptionDto,
-    @User('clientId') clientId: string
+    @User('client') client: any
   ) {
-    if (!clientId) {
+    if (!client) {
       return { error: 'Only clients can change subscription plans' };
     }
     return this.billingService.changeSubscriptionPlan(subscriptionId, changeDto);
@@ -197,12 +197,12 @@ export class BillingController {
   @Get('transactions/my')
   findMyTransactions(
     @Query() query: QueryTransactionsDto,
-    @User('clientId') clientId: string
+    @User('client') client: any
   ) {
-    if (!clientId) {
+    if (!client) {
       return { error: 'Only clients can access personal transactions' };
     }
-    query.clientId = clientId;
+    query.clientId = client.id;
     return this.billingService.findAllTransactions(query);
   }
 
@@ -214,47 +214,47 @@ export class BillingController {
   // =============== CLIENT CREDIT STATS ===============
 
   @Get('my-stats')
-  getMyCreditStats(@User('clientId') clientId: string) {
-    if (!clientId) {
+  getMyCreditStats(@User('client') client: any) {
+    if (!client) {
       return { error: 'Only clients can access credit stats' };
     }
-    return this.billingService.getClientCreditStats(clientId);
+    return this.billingService.getClientCreditStats(client.id);
   }
 
   @Get('my-history')
   getMyTransactionHistory(
-    @User('clientId') clientId: string,
+    @User('client') client: any,
     @Query('months') months?: string
   ) {
-    if (!clientId) {
+    if (!client) {
       return { error: 'Only clients can access transaction history' };
     }
     const monthsNum = months ? parseInt(months) : 3;
-    return this.billingService.getClientTransactionHistory(clientId, monthsNum);
+    return this.billingService.getClientTransactionHistory(client.id, monthsNum);
   }
 
   @Get('my-usage-chart')
   getMyUsageChart(
-    @User('clientId') clientId: string,
+    @User('client') client: any,
     @Query('months') months?: string
   ) {
-    if (!clientId) {
+    if (!client) {
       return { error: 'Only clients can access usage chart' };
     }
     const monthsNum = months ? parseInt(months) : 6;
-    return this.billingService.getClientMonthlyUsageChart(clientId, monthsNum);
+    return this.billingService.getClientMonthlyUsageChart(client.id, monthsNum);
   }
 
   @Get('my-service-usage')
   getMyServiceUsage(
-    @User('clientId') clientId: string,
+    @User('client') client: any,
     @Query('months') months?: string
   ) {
-    if (!clientId) {
+    if (!client) {
       return { error: 'Only clients can access service usage' };
     }
     const monthsNum = months ? parseInt(months) : 1;
-    return this.billingService.getClientServiceUsage(clientId, monthsNum);
+    return this.billingService.getClientServiceUsage(client.id, monthsNum);
   }
 
   @Get('client-stats/:clientId')
@@ -312,23 +312,23 @@ export class BillingController {
   @HttpCode(HttpStatus.OK)
   purchaseSubscription(
     @Body() purchaseDto: PurchaseSubscriptionDto,
-    @User('clientId') clientId: string
+    @User('client') client: any
   ) {
-    if (!clientId) {
+    if (!client) {
       return { error: 'Only clients can purchase subscriptions' };
     }
-    return this.billingService.purchaseSubscription(clientId, purchaseDto);
+    return this.billingService.purchaseSubscription(client.id, purchaseDto);
   }
 
   @Post('purchase/credits')
   @HttpCode(HttpStatus.OK)
   purchaseCreditPackage(
     @Body() purchaseDto: PurchaseCreditPackageDto,
-    @User('clientId') clientId: string
+    @User('client') client: any
   ) {
-    if (!clientId) {
+    if (!client) {
       return { error: 'Only clients can purchase credit packages' };
     }
-    return this.billingService.purchaseCreditPackage(clientId, purchaseDto);
+    return this.billingService.purchaseCreditPackage(client.id, purchaseDto);
   }
 }

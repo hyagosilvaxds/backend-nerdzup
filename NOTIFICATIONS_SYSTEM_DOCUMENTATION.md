@@ -12,10 +12,30 @@ O sistema de notificações permite enviar, gerenciar e receber notificações e
 - `SERVICE_REQUEST_ASSIGNED` - Solicitação atribuída a funcionários
 - `SERVICE_REQUEST_COMPLETED` - Serviço concluído
 
-### Tasks
+### Tasks & Workflow
 - `TASK_ASSIGNED` - Tarefa atribuída
 - `TASK_COMPLETED` - Tarefa concluída
 - `TASK_DUE_SOON` - Tarefa próxima do prazo
+- `TASK_PROGRESS_UPDATE` - Avanço nas tarefas
+
+### Campaigns
+- `CAMPAIGN_UPDATE` - Atualizações gerais de campanhas
+- `CAMPAIGN_CREATED` - Nova campanha criada
+- `CAMPAIGN_COMPLETED` - Campanha finalizada
+
+### File Management
+- `LIBRARY_FILE_ADDED` - Arquivo adicionado à biblioteca
+- `LIBRARY_FILE_REMOVED` - Arquivo removido da biblioteca
+- `LIBRARY_FILE_UPDATED` - Arquivo da biblioteca atualizado
+
+### Security & Account
+- `PASSWORD_CHANGED` - Senha alterada com sucesso
+- `ACCOUNT_LOCKED` - Conta bloqueada por segurança
+- `LOGIN_ATTEMPT` - Tentativa de login suspeita
+
+### Communication
+- `CHAT_MESSAGE` - Nova mensagem no chat
+- `CHAT_MESSAGE_MENTION` - Menção em mensagem do chat
 
 ### Billing
 - `PAYMENT_SUCCESS` - Pagamento processado com sucesso
@@ -26,6 +46,7 @@ O sistema de notificações permite enviar, gerenciar e receber notificações e
 
 ### System
 - `SYSTEM_ANNOUNCEMENT` - Anúncio do sistema
+- `SYSTEM_MAINTENANCE` - Manutenção programada
 - `GENERAL` - Notificação geral
 
 ## 📈 Níveis de Prioridade
@@ -233,6 +254,11 @@ search?: string                  // Busca em título/mensagem
 }
 ```
 
+**📝 Observações sobre campos:**
+- `data`: Aceita objeto JSON (não precisa ser string)
+- `actionUrl`: Aceita URLs absolutas ou relativas (ex: "/system/maintenance", "https://example.com")
+- `expiresAt`: Data/hora em formato ISO 8601
+
 ##### Response (201 Created)
 ```json
 {
@@ -261,21 +287,37 @@ search?: string                  // Busca em título/mensagem
 
 ##### Request Body
 ```json
-[
-  {
-    "recipientId": "user_123",
-    "type": "SYSTEM_ANNOUNCEMENT",
-    "title": "Atualização do Sistema",
-    "message": "Nova versão disponível com melhorias."
-  },
-  {
-    "recipientId": "user_456",
-    "type": "SYSTEM_ANNOUNCEMENT", 
-    "title": "Atualização do Sistema",
-    "message": "Nova versão disponível com melhorias."
-  }
-]
+{
+  "notifications": [
+    {
+      "recipientId": "user_123",
+      "type": "SYSTEM_ANNOUNCEMENT",
+      "title": "Atualização do Sistema",
+      "message": "Nova versão disponível com melhorias.",
+      "priority": "MEDIUM"
+    },
+    {
+      "recipientId": "user_456",
+      "type": "SYSTEM_ANNOUNCEMENT", 
+      "title": "Atualização do Sistema",
+      "message": "Nova versão disponível com melhorias.",
+      "priority": "MEDIUM"
+    }
+  ]
+}
 ```
+
+**⚠️ Campos Obrigatórios para cada notificação:**
+- `recipientId`: ID do usuário destinatário (obrigatório)
+- `type`: Tipo da notificação (obrigatório) 
+- `title`: Título da notificação (obrigatório)
+- `message`: Mensagem da notificação (obrigatório)
+
+**📝 Campos Opcionais:**
+- `priority`: Prioridade (padrão: "MEDIUM")
+- `actionUrl`: URL de ação
+- `data`: Dados adicionais em JSON
+- `expiresAt`: Data de expiração
 
 ##### Response (201 Created)
 ```json
@@ -306,7 +348,94 @@ search?: string                  // Busca em título/mensagem
 }
 ```
 
+#### Broadcast Notifications
+**POST** `/notifications/broadcast`
 
+**Permissões**: `ADMIN` e `EMPLOYEE`
+
+**Descrição**: Envia uma notificação para todos os usuários ativos de roles específicos (broadcast).
+
+##### Request Body
+```json
+{
+  "targetRoles": ["CLIENT", "EMPLOYEE"],
+  "type": "SYSTEM_ANNOUNCEMENT",
+  "title": "Manutenção Programada do Sistema",
+  "message": "O sistema estará em manutenção das 02:00 às 04:00 de amanhã. Durante este período, alguns serviços poderão estar indisponíveis.",
+  "data": {
+    "maintenanceWindow": "2024-01-16T02:00:00.000Z - 2024-01-16T04:00:00.000Z",
+    "affectedServices": ["dashboard", "api", "reports"]
+  },
+  "actionUrl": "/system/maintenance-info",
+  "priority": "HIGH",
+  "expiresAt": "2024-01-17T00:00:00.000Z"
+}
+```
+
+**📋 Campos Obrigatórios:**
+- `targetRoles`: Array com os roles que receberão a notificação (`CLIENT`, `EMPLOYEE`, `ADMIN`)
+- `type`: Tipo da notificação (obrigatório) 
+- `title`: Título da notificação (obrigatório)
+- `message`: Mensagem da notificação (obrigatório)
+
+**🎯 Roles Disponíveis:**
+- `CLIENT`: Apenas clientes
+- `EMPLOYEE`: Apenas funcionários  
+- `ADMIN`: Apenas administradores
+- `["CLIENT", "EMPLOYEE"]`: Clientes e funcionários
+- `["CLIENT", "EMPLOYEE", "ADMIN"]`: Todos os usuários
+
+##### Response (201 Created)
+```json
+{
+  "message": "Broadcast notification sent to 25 users",
+  "targetRoles": ["CLIENT", "EMPLOYEE"],
+  "count": 25,
+  "notifications": [
+    {
+      "id": "notif_123",
+      "recipientId": "user_456",
+      "type": "SYSTEM_ANNOUNCEMENT",
+      "title": "Manutenção Programada do Sistema",
+      "message": "O sistema estará em manutenção...",
+      "isRead": false,
+      "priority": "HIGH",
+      "createdAt": "2024-01-15T20:30:00.000Z",
+      "recipient": {
+        "id": "user_456",
+        "email": "cliente@exemplo.com",
+        "role": "CLIENT",
+        "profilePhoto": null
+      }
+    }
+    // ... mais notificações
+  ],
+  "recipients": [
+    {
+      "id": "user_456",
+      "email": "cliente@exemplo.com", 
+      "role": "CLIENT"
+    },
+    {
+      "id": "user_789",
+      "email": "funcionario@exemplo.com",
+      "role": "EMPLOYEE" 
+    }
+    // ... mais destinatários
+  ]
+}
+```
+
+**✅ Casos de Uso Comuns:**
+- **Manutenção do Sistema**: Notificar todos os usuários sobre downtime
+- **Novas Funcionalidades**: Anunciar updates para clientes
+- **Políticas da Empresa**: Comunicados internos para funcionários
+- **Alertas de Segurança**: Notificações críticas para todos
+
+**⚠️ Observações:**
+- Apenas usuários **ativos** (`isActive: true`) recebem as notificações
+- Se nenhum usuário for encontrado para os roles especificados, retorna `count: 0`
+- Todas as notificações são criadas em uma única transação para garantir consistência
 
 ---
 
@@ -353,6 +482,71 @@ await notificationsService.notifyPaymentSuccess(
 
 // Notificar créditos baixos
 await notificationsService.notifyCreditsLow('user_456', 10);
+```
+
+### Campaign Notifications
+```typescript
+// Notificar atualização de campanha
+await notificationsService.notifyCampaignUpdate(
+  'user_789',
+  'campaign_123',
+  'Black Friday 2024',
+  'Campanha atualizada com novos produtos'
+);
+
+// Notificar campanha concluída
+await notificationsService.notifyCampaignCompleted(
+  'user_789',
+  'campaign_123',
+  'Black Friday 2024'
+);
+```
+
+### File Management Notifications
+```typescript
+// Notificar arquivo adicionado à biblioteca
+await notificationsService.notifyLibraryFileAdded(
+  'user_456',
+  'documento-projeto.pdf',
+  'library_file_789'
+);
+
+// Notificar arquivo removido
+await notificationsService.notifyLibraryFileRemoved(
+  'user_456',
+  'documento-antigo.pdf'
+);
+```
+
+### Security Notifications
+```typescript
+// Notificar alteração de senha
+await notificationsService.notifyPasswordChanged('user_456');
+
+// Notificar tentativa de login suspeita
+await notificationsService.notifyLoginAttempt(
+  'user_456',
+  'IP: 192.168.1.100'
+);
+```
+
+### Chat Notifications
+```typescript
+// Notificar nova mensagem no chat
+await notificationsService.notifyChatMessage(
+  'user_456',
+  'user_789',
+  'chat_room_123',
+  'Nova mensagem de João Silva'
+);
+
+// Notificar menção no chat
+await notificationsService.notifyChatMention(
+  'user_456',
+  'user_789',
+  'chat_room_123',
+  'Você foi mencionado por João Silva'
+);
 ```
 
 ---
@@ -513,9 +707,28 @@ const NotificationCenter: React.FC = () => {
     switch (type) {
       case 'SERVICE_REQUEST_APPROVED': return '✅';
       case 'SERVICE_REQUEST_REJECTED': return '❌';
+      case 'SERVICE_REQUEST_ASSIGNED': return '📋';
+      case 'SERVICE_REQUEST_COMPLETED': return '🎉';
       case 'TASK_ASSIGNED': return '📋';
+      case 'TASK_COMPLETED': return '✅';
+      case 'TASK_PROGRESS_UPDATE': return '📈';
+      case 'CAMPAIGN_UPDATE': return '📢';
+      case 'CAMPAIGN_CREATED': return '🎯';
+      case 'CAMPAIGN_COMPLETED': return '🏁';
+      case 'LIBRARY_FILE_ADDED': return '📄';
+      case 'LIBRARY_FILE_REMOVED': return '🗑️';
+      case 'LIBRARY_FILE_UPDATED': return '📝';
+      case 'PASSWORD_CHANGED': return '🔒';
+      case 'ACCOUNT_LOCKED': return '⛔';
+      case 'LOGIN_ATTEMPT': return '⚠️';
+      case 'CHAT_MESSAGE': return '💬';
+      case 'CHAT_MESSAGE_MENTION': return '🗨️';
       case 'PAYMENT_SUCCESS': return '💳';
+      case 'PAYMENT_FAILED': return '❌';
       case 'CREDITS_LOW': return '⚠️';
+      case 'CREDITS_ADJUSTMENT': return '💰';
+      case 'SYSTEM_ANNOUNCEMENT': return '📢';
+      case 'SYSTEM_MAINTENANCE': return '🔧';
       default: return '🔔';
     }
   };
@@ -661,3 +874,67 @@ export class NotificationsGateway {
 - URLs de ação são opcionais e podem direcionar para páginas específicas
 - O sistema é otimizado para consultas rápidas com índices apropriados
 - Suporte completo a paginação para grandes volumes de notificações
+
+---
+
+## 🆕 Novos Tipos de Notificação Adicionados
+
+### Resumo das Atualizações
+
+O sistema de notificações foi expandido para incluir os seguintes tipos de notificação:
+
+#### **Solicitações de Serviço**
+- ✅ `SERVICE_REQUEST_APPROVED` - Quando uma solicitação de serviço é aprovada
+
+#### **Avanços em Tarefas e Workflow**
+- 📈 `TASK_PROGRESS_UPDATE` - Notifica sobre avanços e progresso nas tarefas
+
+#### **Campanhas**
+- 📢 `CAMPAIGN_UPDATE` - Atualizações gerais sobre campanhas
+- 🎯 `CAMPAIGN_CREATED` - Quando uma nova campanha é criada
+- 🏁 `CAMPAIGN_COMPLETED` - Quando uma campanha é finalizada
+
+#### **Gestão de Arquivos da Biblioteca**
+- 📄 `LIBRARY_FILE_ADDED` - Quando um arquivo é adicionado à biblioteca
+- 🗑️ `LIBRARY_FILE_REMOVED` - Quando um arquivo é removido da biblioteca
+- 📝 `LIBRARY_FILE_UPDATED` - Quando um arquivo da biblioteca é atualizado
+
+#### **Segurança e Conta**
+- 🔒 `PASSWORD_CHANGED` - Quando a senha do usuário é alterada
+- ⛔ `ACCOUNT_LOCKED` - Quando uma conta é bloqueada por razões de segurança
+- ⚠️ `LOGIN_ATTEMPT` - Notificações sobre tentativas de login suspeitas
+
+#### **Comunicação e Chat**
+- 💬 `CHAT_MESSAGE` - Nova mensagem recebida no chat
+- 🗨️ `CHAT_MESSAGE_MENTION` - Quando o usuário é mencionado em uma mensagem
+
+### Implementação Recomendada
+
+Para implementar estes novos tipos de notificação:
+
+1. **Atualizar o Enum no Prisma Schema**: Adicionar os novos tipos no enum `NotificationType`
+2. **Implementar Helper Methods**: Criar métodos helper no `NotificationsService` para cada tipo
+3. **Configurar Triggers**: Configurar gatilhos automáticos nos respectivos serviços (campanhas, biblioteca, autenticação, chat)
+4. **Testar Integração**: Verificar se as notificações são enviadas corretamente nos cenários apropriados
+
+### Exemplos de Uso nos Serviços
+
+```typescript
+// No serviço de campanhas
+await this.notificationsService.notifyCampaignUpdate(
+  userId, campaignId, campaignName, updateMessage
+);
+
+// No serviço de biblioteca
+await this.notificationsService.notifyLibraryFileAdded(
+  userId, fileName, fileId
+);
+
+// No serviço de autenticação
+await this.notificationsService.notifyPasswordChanged(userId);
+
+// No serviço de chat
+await this.notificationsService.notifyChatMessage(
+  recipientId, senderId, chatRoomId, messagePreview
+);
+```

@@ -18,31 +18,49 @@ A API de Wallet e Billing gerencia créditos de clientes, assinaturas, pacotes d
 ##### Response (200 OK)
 ```json
 {
-  "id": "wallet_123",
-  "clientId": "client_456",
-  "availableCredits": 1250,
-  "totalEarned": 5000,
-  "totalSpent": 3750,
-  "lastTransaction": "2024-01-15T14:30:00.000Z",
-  "createdAt": "2023-06-01T10:00:00.000Z",
-  "updatedAt": "2024-01-15T14:30:00.000Z",
-  "currentSubscription": {
-    "id": "sub_789",
-    "plan": {
-      "displayName": "Plano Premium",
-      "monthlyCredits": 500
-    },
-    "nextBillingDate": "2024-02-15T00:00:00.000Z",
-    "status": "ACTIVE",
-    "isAnnual": false
-  },
-  "usageThisMonth": {
-    "creditsUsed": 125,
-    "servicesRequested": 8,
-    "averageCreditsPerService": 15.6
+  "id": "cmezladn30008vbibcx54yuhf",
+  "clientId": "cmezladmy0006vbibj6bfjeqg",
+  "availableCredits": 900,
+  "totalEarned": 2300,
+  "totalSpent": 1400,
+  "lastTransaction": "2025-09-12T21:53:50.130Z",
+  "createdAt": "2025-08-31T11:10:35.151Z",
+  "updatedAt": "2025-09-12T22:04:30.017Z",
+  "client": {
+    "id": "cmezladmy0006vbibj6bfjeqg",
+    "userId": "cmezladmw0004vbib1n4hq6rm",
+    "fullName": "Maria Oliveira",
+    "personType": "BUSINESS",
+    "taxDocument": "12.345.678/0001-90",
+    "position": "cargo bão",
+    "companyName": "Tech Solutions Ltda",
+    "tradeName": "aoooba trem bão",
+    "sector": "",
+    "companySize": "MICRO",
+    "website": "https://alougaleradecowboy.com",
+    "phone": "+55 11 88888-0001",
+    "street": "Av. Paulista, 1000",
+    "city": "São Paulo",
+    "state": "SP",
+    "zipCode": "01310-000",
+    "country": "Brasil",
+    "createdAt": "2025-08-31T11:10:35.147Z",
+    "updatedAt": "2025-09-11T11:52:09.939Z",
+    "user": {
+      "id": "cmezladmw0004vbib1n4hq6rm",
+      "email": "cliente@empresa.com",
+      "password": "$2b$12$6zffC3Et./7U0hWsE8y3NeyPjFufdAf7PqPix4UHB2UdrEL2ySGFK",
+      "role": "CLIENT",
+      "isActive": true,
+      "profilePhoto": "/uploads/profile-photos/30043b77-f02e-420e-8526-716f4368f60f.png",
+      "createdAt": "2025-08-31T11:10:35.145Z",
+      "updatedAt": "2025-09-11T12:22:31.829Z"
+    }
   }
 }
 ```
+
+**Nota**: Para informações sobre assinatura e uso mensal, utilize os endpoints `/billing/my-stats` e `/billing/subscriptions`.
 
 #### Get Client Wallet (Admin/Employee)
 **GET** `/billing/wallet/:clientId`
