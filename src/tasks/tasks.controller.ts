@@ -17,13 +17,16 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { CreateTaskForEmployeeDto } from './dto/create-task-for-employee.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { QueryTasksDto, UpdateTaskStatusDto, UpdateTaskProgressDto, AssignTaskDto, CreateTaskCommentDto, CreateTaskFileDto } from './dto/query-tasks.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { User } from '../auth/decorators/user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role, TaskFileType } from '@prisma/client';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { Role, TaskFileType, Permission } from '@prisma/client';
 import { UploadService } from '../upload/upload.service';
 
 @Controller('tasks')
@@ -35,14 +38,50 @@ export class TasksController {
   ) {}
 
   @Post()
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, PermissionsGuard)
   @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @Permissions(Permission.WRITE_TASKS)
   @HttpCode(HttpStatus.CREATED)
   create(
     @Body() createTaskDto: CreateTaskDto,
     @User('id') userId: string
   ) {
     return this.tasksService.create(createTaskDto, userId);
+  }
+
+  @Post('for-employee')
+  @UseGuards(RolesGuard, PermissionsGuard)
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @Permissions(Permission.CREATE_TASKS_FOR_OTHERS)
+  @HttpCode(HttpStatus.CREATED)
+  async createTaskForEmployee(
+    @Body() createTaskDto: CreateTaskForEmployeeDto,
+    @User() user: any
+  ) {
+    if (!user.employee?.id) {
+      throw new BadRequestException('Employee profile not found');
+    }
+    return this.tasksService.createTaskForEmployee(createTaskDto, user.employee.id);
+  }
+
+  @Post('my-task')
+  @UseGuards(RolesGuard)
+  @Roles(Role.EMPLOYEE)
+  @HttpCode(HttpStatus.CREATED)
+  async createMyTask(
+    @Body() createTaskDto: Omit<CreateTaskForEmployeeDto, 'assignedToEmployeeId'>,
+    @User() user: any
+  ) {
+    if (!user.employee?.id) {
+      throw new BadRequestException('Employee profile not found');
+    }
+
+    const taskDto = {
+      ...createTaskDto,
+      assignedToEmployeeId: user.employee.id
+    };
+
+    return this.tasksService.createTaskForEmployee(taskDto, user.employee.id);
   }
 
   @Get()

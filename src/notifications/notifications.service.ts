@@ -399,9 +399,9 @@ export class NotificationsService {
 
   // =============== HELPER METHODS FOR CREATING SPECIFIC NOTIFICATIONS ===============
 
-  async notifyServiceRequestApproved(serviceRequestId: string, clientId: string, projectName: string) {
+  async notifyServiceRequestApproved(serviceRequestId: string, clientUserId: string, projectName: string) {
     return this.createNotification({
-      recipientId: clientId,
+      recipientId: clientUserId,
       type: NotificationType.SERVICE_REQUEST_APPROVED,
       title: 'Solicitação de Serviço Aprovada',
       message: `Sua solicitação para o projeto "${projectName}" foi aprovada e está sendo processada.`,
@@ -411,9 +411,9 @@ export class NotificationsService {
     });
   }
 
-  async notifyServiceRequestRejected(serviceRequestId: string, clientId: string, projectName: string, reason?: string) {
+  async notifyServiceRequestRejected(serviceRequestId: string, clientUserId: string, projectName: string, reason?: string) {
     return this.createNotification({
-      recipientId: clientId,
+      recipientId: clientUserId,
       type: NotificationType.SERVICE_REQUEST_REJECTED,
       title: 'Solicitação de Serviço Rejeitada',
       message: `Sua solicitação para o projeto "${projectName}" foi rejeitada.${reason ? ` Motivo: ${reason}` : ''}`,

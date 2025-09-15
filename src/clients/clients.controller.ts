@@ -54,25 +54,59 @@ export class ClientsController {
     return this.clientsService.findAll(query);
   }
 
+  @Get('me')
+  @Roles(Role.CLIENT)
+  findMyProfile(@User() user: any) {
+    if (!user.client?.id) {
+      throw new BadRequestException('Client profile not found');
+    }
+    return this.clientsService.findOne(user.client.id);
+  }
+
   @Get(':id')
   @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CLIENT)
-  @Permissions(Permission.READ_CLIENTS)
   findOne(@Param('id') id: string, @User() user: any) {
     // Clients can only see their own data
     if (user.role === Role.CLIENT && user.client?.id !== id) {
-      throw new Error('Forbidden');
+      throw new BadRequestException('Forbidden');
     }
+
+    // Only check permissions for admin/employee roles
+    if (user.role !== Role.CLIENT) {
+      const hasPermission = user.employee?.permissions?.some(p => p.permission === Permission.READ_CLIENTS);
+      if (!hasPermission) {
+        throw new BadRequestException('Forbidden');
+      }
+    }
+
     return this.clientsService.findOne(id);
+  }
+
+  @Patch('me')
+  @Roles(Role.CLIENT)
+  updateMyProfile(@Body() updateClientDto: UpdateClientDto, @User() user: any) {
+    if (!user.client?.id) {
+      throw new BadRequestException('Client profile not found');
+    }
+    return this.clientsService.update(user.client.id, updateClientDto);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CLIENT)
-  @Permissions(Permission.WRITE_CLIENTS)
   update(@Param('id') id: string, @Body() updateClientDto: UpdateClientDto, @User() user: any) {
     // Clients can only update their own data
     if (user.role === Role.CLIENT && user.client?.id !== id) {
-      throw new Error('Forbidden');
+      throw new BadRequestException('Forbidden');
     }
+
+    // Only check permissions for admin/employee roles
+    if (user.role !== Role.CLIENT) {
+      const hasPermission = user.employee?.permissions?.some(p => p.permission === Permission.WRITE_CLIENTS);
+      if (!hasPermission) {
+        throw new BadRequestException('Forbidden');
+      }
+    }
+
     return this.clientsService.update(id, updateClientDto);
   }
 
@@ -113,19 +147,52 @@ export class ClientsController {
     return this.clientsService.getNotes(id);
   }
 
+  @Get('me/files')
+  @Roles(Role.CLIENT)
+  getMyFiles(@User() user: any) {
+    if (!user.client?.id) {
+      throw new BadRequestException('Client profile not found');
+    }
+    return this.clientsService.getFiles(user.client.id);
+  }
+
   @Get(':id/files')
   @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CLIENT)
-  @Permissions(Permission.READ_CLIENTS)
   getFiles(@Param('id') id: string, @User() user: any) {
+    // Clients can only see their own files
     if (user.role === Role.CLIENT && user.client?.id !== id) {
       throw new BadRequestException('Forbidden');
     }
+
+    // Only check permissions for admin/employee roles
+    if (user.role !== Role.CLIENT) {
+      const hasPermission = user.employee?.permissions?.some(p => p.permission === Permission.READ_CLIENTS);
+      if (!hasPermission) {
+        throw new BadRequestException('Forbidden');
+      }
+    }
+
     return this.clientsService.getFiles(id);
+  }
+
+  @Get('me/service-requests-history')
+  @Roles(Role.CLIENT)
+  getMyServiceRequestsHistory(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @User() user?: any
+  ) {
+    if (!user.client?.id) {
+      throw new BadRequestException('Client profile not found');
+    }
+    const pageNum = parseInt(page || '1') || 1;
+    const limitNum = parseInt(limit || '10') || 10;
+    return this.clientsService.getServiceRequestsHistory(user.client.id, pageNum, limitNum, status);
   }
 
   @Get(':id/service-requests-history')
   @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CLIENT)
-  @Permissions(Permission.READ_CLIENTS)
   getServiceRequestsHistory(
     @Param('id') id: string,
     @Query('page') page?: string,
@@ -133,9 +200,19 @@ export class ClientsController {
     @Query('status') status?: string,
     @User() user?: any
   ) {
+    // Clients can only see their own history
     if (user?.role === Role.CLIENT && user.client?.id !== id) {
       throw new BadRequestException('Forbidden');
     }
+
+    // Only check permissions for admin/employee roles
+    if (user?.role !== Role.CLIENT) {
+      const hasPermission = user.employee?.permissions?.some(p => p.permission === Permission.READ_CLIENTS);
+      if (!hasPermission) {
+        throw new BadRequestException('Forbidden');
+      }
+    }
+
     const pageNum = parseInt(page || '1') || 1;
     const limitNum = parseInt(limit || '10') || 10;
     return this.clientsService.getServiceRequestsHistory(id, pageNum, limitNum, status);
@@ -195,13 +272,31 @@ export class ClientsController {
     return this.clientsService.updateProfilePhoto(id, file);
   }
 
+  @Get('me/wallet')
+  @Roles(Role.CLIENT)
+  getMyWallet(@User() user: any) {
+    if (!user.client?.id) {
+      throw new BadRequestException('Client profile not found');
+    }
+    return this.clientsService.getWalletDetails(user.client.id);
+  }
+
   @Get(':id/wallet')
   @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CLIENT)
-  @Permissions(Permission.READ_CLIENTS)
   getWallet(@Param('id') id: string, @User() user: any) {
+    // Clients can only see their own wallet
     if (user.role === Role.CLIENT && user.client?.id !== id) {
       throw new BadRequestException('Forbidden');
     }
+
+    // Only check permissions for admin/employee roles
+    if (user.role !== Role.CLIENT) {
+      const hasPermission = user.employee?.permissions?.some(p => p.permission === Permission.READ_CLIENTS);
+      if (!hasPermission) {
+        throw new BadRequestException('Forbidden');
+      }
+    }
+
     return this.clientsService.getWalletDetails(id);
   }
 

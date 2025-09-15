@@ -17,6 +17,7 @@ import {
 import { EmployeesService } from './employees.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { UpdateEmployeeProfileDto } from './dto/update-employee-profile.dto';
 import { AssignPermissionsDto } from './dto/assign-permissions.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangeEmployeePasswordDto } from './dto/change-employee-password.dto';
@@ -106,6 +107,16 @@ export class EmployeesController {
   @HttpCode(HttpStatus.OK)
   changePassword(@Body() changePasswordDto: ChangeEmployeePasswordDto, @User() user: any) {
     return this.employeesService.changeEmployeePassword(user.employee?.id, changePasswordDto);
+  }
+
+  @Patch('profile')
+  @Roles(Role.EMPLOYEE)
+  @HttpCode(HttpStatus.OK)
+  updateMyProfile(@Body() updateProfileDto: UpdateEmployeeProfileDto, @User() user: any) {
+    if (!user.employee?.id) {
+      throw new BadRequestException('Employee profile not found');
+    }
+    return this.employeesService.updateEmployeeProfile(user.employee.id, updateProfileDto);
   }
 
   @Post(':id/profile-photo')

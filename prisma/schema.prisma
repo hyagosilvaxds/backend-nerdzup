@@ -42,6 +42,10 @@ enum Permission {
   READ_CAMPAIGNS
   WRITE_CAMPAIGNS
   DELETE_CAMPAIGNS
+  READ_TASKS
+  WRITE_TASKS
+  DELETE_TASKS
+  CREATE_TASKS_FOR_OTHERS
   MANAGE_PERMISSIONS
 }
 
@@ -59,6 +63,7 @@ model User {
   client        Client?
   employee      Employee?
   taskComments  TaskComment[]
+  campaignComments CampaignComment[]
   apiKeys       ApiKey[]
   websiteConfigs WebsiteConfig[]
   clientNotes   ClientNote[]
@@ -156,6 +161,7 @@ model Employee {
   permissions EmployeePermissions[]
   campaignAssignments CampaignAssignee[]
   taskAssignments TaskAssignee[]
+  serviceRequestAssignments ServiceRequestEmployee[]
 
   @@map("employees")
 }
@@ -193,13 +199,14 @@ model Campaign {
   assignees CampaignAssignee[] // Funcionários atribuídos à campanha
   tasks    Task[]
   conversations Conversation[] // Conversas relacionadas
+  comments CampaignComment[] // Comentários da campanha
 
   @@map("campaigns")
 }
 
 model CampaignAssignee {
   id         String   @id @default(cuid())
-  campaignId String   
+  campaignId String
   employeeId String
   assignedAt DateTime @default(now())
   assignedBy String   // ID do funcionário que fez a atribuição
@@ -210,6 +217,21 @@ model CampaignAssignee {
 
   @@unique([campaignId, employeeId])
   @@map("campaign_assignees")
+}
+
+model CampaignComment {
+  id         String   @id @default(cuid())
+  campaignId String
+  authorId   String                        // ID do usuário (cliente ou funcionário)
+  content    String                        // Conteúdo do comentário
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_comments")
 }
 
 model PasswordResetToken {
@@ -555,8 +577,25 @@ model ServiceRequest {
   client        Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
   task          Task?               @relation(fields: [taskId], references: [id], onDelete: SetNull)
   campaigns     Campaign[]          // Campanhas criadas a partir desta solicitação
+  assignedEmployees ServiceRequestEmployee[] // Employees atribuídos
 
   @@map("service_requests")
+}
+
+model ServiceRequestEmployee {
+  id               String         @id @default(cuid())
+  serviceRequestId String                         // ID da service request
+  employeeId       String                         // ID do employee
+  assignedAt       DateTime       @default(now()) // Data de atribuição
+  assignedBy       String                         // ID do admin que fez a atribuição
+  notes            String?                        // Observações da atribuição
+
+  // Relations
+  serviceRequest   ServiceRequest @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  employee         Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceRequestId, employeeId])
+  @@map("service_request_employees")
 }
 
 model TaskAssignee {
@@ -909,6 +948,7 @@ enum NotificationType {
   SERVICE_REQUEST_APPROVED
   SERVICE_REQUEST_REJECTED
   SERVICE_REQUEST_ASSIGNED
+  SERVICE_REQUEST_UNASSIGNED
   SERVICE_REQUEST_COMPLETED
   TASK_ASSIGNED
   TASK_COMPLETED

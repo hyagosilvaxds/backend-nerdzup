@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { CreateTaskForEmployeeDto } from './dto/create-task-for-employee.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { QueryTasksDto, UpdateTaskStatusDto, UpdateTaskProgressDto, AssignTaskDto, CreateTaskCommentDto, CreateTaskFileDto } from './dto/query-tasks.dto';
 import { TaskStatus, TaskPriority, TaskFileType, Role } from '@prisma/client';
@@ -55,6 +56,91 @@ export class TasksService {
       include: {
         service: true,
         client: { include: { user: true } },
+        campaign: true,
+        assignees: {
+          include: {
+            employee: { include: { user: true } }
+          }
+        },
+        files: true,
+        comments: {
+          include: { author: true },
+          orderBy: { createdAt: 'desc' }
+        }
+      },
+    });
+
+    return task;
+  }
+
+  async createTaskForEmployee(createTaskDto: CreateTaskForEmployeeDto, createdByEmployeeId: string) {
+    // Verificar se o employee que está criando a task existe
+    const createdBy = await this.prisma.employee.findUnique({
+      where: { id: createdByEmployeeId },
+      include: { user: true },
+    });
+
+    if (!createdBy) {
+      throw new NotFoundException('Creating employee not found');
+    }
+
+    // Verificar se o employee destinatário existe
+    const assignedTo = await this.prisma.employee.findUnique({
+      where: { id: createTaskDto.assignedToEmployeeId },
+      include: { user: true },
+    });
+
+    if (!assignedTo) {
+      throw new NotFoundException('Assigned employee not found');
+    }
+
+    // Se não forneceu clientId ou serviceId, buscar valores padrão
+    let clientId = createTaskDto.clientId;
+    let serviceId = createTaskDto.serviceId;
+
+    if (!serviceId) {
+      const defaultService = await this.prisma.service.findFirst({
+        orderBy: { createdAt: 'asc' }
+      });
+      if (!defaultService) {
+        throw new BadRequestException('No services available. Please contact administrator.');
+      }
+      serviceId = defaultService.id;
+    }
+
+    if (!clientId) {
+      // Se não especificou cliente, usar o primeiro cliente disponível como padrão
+      const defaultClient = await this.prisma.client.findFirst({
+        orderBy: { createdAt: 'asc' }
+      });
+      if (!defaultClient) {
+        throw new BadRequestException('No clients available. Please contact administrator.');
+      }
+      clientId = defaultClient.id;
+    }
+
+    // Criar a task
+    const task = await this.prisma.task.create({
+      data: {
+        title: createTaskDto.title,
+        description: createTaskDto.description,
+        status: createTaskDto.status || TaskStatus.BACKLOG,
+        priority: createTaskDto.priority || TaskPriority.MEDIA,
+        dueDate: createTaskDto.dueDate ? new Date(createTaskDto.dueDate) : null,
+        estimatedHours: createTaskDto.estimatedHours,
+        serviceId,
+        clientId,
+        assignees: {
+          create: [{
+            employeeId: createTaskDto.assignedToEmployeeId,
+            assignedAt: new Date(),
+            assignedBy: createdBy.userId,
+          }],
+        },
+      },
+      include: {
+        client: { include: { user: true } },
+        service: true,
         campaign: true,
         assignees: {
           include: {

@@ -21,6 +21,7 @@ import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { UpdateServiceRequestDto } from './dto/update-service-request.dto';
 import { ApproveServiceRequestDto, RejectServiceRequestDto } from './dto/approve-service-request.dto';
 import { AssignServiceRequestDto } from './dto/assign-service-request.dto';
+import { AssignEmployeesToRequestDto } from './dto/assign-employees-to-request.dto';
 import { QueryServiceRequestsDto } from './dto/query-service-requests.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -259,5 +260,38 @@ export class ServiceRequestsController {
   ) {
     const assignedBy = req.user.id;
     return this.serviceRequestsService.assignServiceRequest(id, assignDto, assignedBy);
+  }
+
+  @Post(':id/assign-employees')
+  @Roles(Role.ADMIN)
+  @UseGuards(RolesGuard)
+  @HttpCode(HttpStatus.OK)
+  async assignEmployeesToServiceRequest(
+    @Param('id') id: string,
+    @Body() assignDto: AssignEmployeesToRequestDto,
+    @Request() req: any
+  ) {
+    const assignedBy = req.user.id;
+    return this.serviceRequestsService.assignEmployeesToServiceRequest(id, assignDto, assignedBy);
+  }
+
+  @Delete(':id/employees/:employeeId')
+  @Roles(Role.ADMIN)
+  @UseGuards(RolesGuard)
+  @HttpCode(HttpStatus.OK)
+  async removeEmployeeFromServiceRequest(
+    @Param('id') id: string,
+    @Param('employeeId') employeeId: string,
+    @Request() req: any
+  ) {
+    const removedBy = req.user.id;
+    return this.serviceRequestsService.removeEmployeeFromServiceRequest(id, employeeId, removedBy);
+  }
+
+  @Get(':id/employees')
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @UseGuards(RolesGuard)
+  async getServiceRequestEmployees(@Param('id') id: string) {
+    return this.serviceRequestsService.getServiceRequestEmployees(id);
   }
 }

@@ -6,6 +6,7 @@ import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { UpdateServiceRequestDto } from './dto/update-service-request.dto';
 import { ApproveServiceRequestDto, RejectServiceRequestDto } from './dto/approve-service-request.dto';
 import { AssignServiceRequestDto } from './dto/assign-service-request.dto';
+import { AssignEmployeesToRequestDto } from './dto/assign-employees-to-request.dto';
 import { QueryServiceRequestsDto } from './dto/query-service-requests.dto';
 import { ServiceRequestStatus, TaskStatus } from '@prisma/client';
 
@@ -117,6 +118,7 @@ export class ServiceRequestsService {
             fullName: true,
             user: {
               select: {
+                id: true,
                 email: true
               }
             }
@@ -231,6 +233,7 @@ export class ServiceRequestsService {
             fullName: true,
             user: {
               select: {
+                id: true,
                 email: true
               }
             }
@@ -386,6 +389,7 @@ export class ServiceRequestsService {
               fullName: true,
               user: {
                 select: {
+                  id: true,
                   email: true
                 }
               }
@@ -434,6 +438,7 @@ export class ServiceRequestsService {
           include: {
             user: {
               select: {
+                id: true,
                 email: true
               }
             }
@@ -522,6 +527,7 @@ export class ServiceRequestsService {
               fullName: true,
               user: {
                 select: {
+                  id: true,
                   email: true
                 }
               }
@@ -546,7 +552,7 @@ export class ServiceRequestsService {
     try {
       await this.notificationsService.notifyServiceRequestApproved(
         result.serviceRequest.id,
-        result.serviceRequest.clientId,
+        result.serviceRequest.client.user.id, // ✅ Usar userId do cliente
         result.serviceRequest.service.displayName
       );
     } catch (error) {
@@ -597,6 +603,7 @@ export class ServiceRequestsService {
             fullName: true,
             user: {
               select: {
+                id: true,
                 email: true
               }
             }
@@ -609,7 +616,7 @@ export class ServiceRequestsService {
     try {
       await this.notificationsService.notifyServiceRequestRejected(
         rejectedRequest.id,
-        rejectedRequest.clientId,
+        rejectedRequest.client.user.id, // ✅ Usar userId do cliente
         rejectedRequest.service.displayName,
         rejectDto.rejectionReason
       );
@@ -684,6 +691,7 @@ export class ServiceRequestsService {
           include: {
             user: {
               select: {
+                id: true,
                 email: true
               }
             }
@@ -815,6 +823,7 @@ export class ServiceRequestsService {
               fullName: true,
               user: {
                 select: {
+                  id: true,
                   email: true
                 }
               }
@@ -856,6 +865,221 @@ export class ServiceRequestsService {
         position: emp.position,
         email: emp.user.email
       }))
+    };
+  }
+
+  async assignEmployeesToServiceRequest(id: string, assignDto: AssignEmployeesToRequestDto, assignedBy: string) {
+    // Verificar se a service request existe (independente do status)
+    const serviceRequest = await this.prisma.serviceRequest.findUnique({
+      where: { id },
+      include: {
+        service: true,
+        client: { include: { user: true } },
+        assignedEmployees: {
+          include: {
+            employee: { select: { id: true, name: true } }
+          }
+        }
+      }
+    });
+
+    if (!serviceRequest) {
+      throw new NotFoundException('Service request not found');
+    }
+
+    // Verificar se todos os employees existem e estão ativos
+    const employees = await this.prisma.employee.findMany({
+      where: {
+        id: { in: assignDto.employeeIds },
+        isActive: true
+      },
+      select: {
+        id: true,
+        name: true,
+        position: true,
+        user: { select: { email: true } }
+      }
+    });
+
+    if (employees.length !== assignDto.employeeIds.length) {
+      throw new BadRequestException('One or more employees not found or inactive');
+    }
+
+    // Filtrar employees que já estão atribuídos
+    const alreadyAssigned = serviceRequest.assignedEmployees.map(ae => ae.employeeId);
+    const newEmployeeIds = assignDto.employeeIds.filter(id => !alreadyAssigned.includes(id));
+
+    if (newEmployeeIds.length === 0) {
+      throw new BadRequestException('All specified employees are already assigned to this service request');
+    }
+
+    // Criar as atribuições
+    const assignments = newEmployeeIds.map(employeeId => ({
+      serviceRequestId: id,
+      employeeId,
+      assignedBy,
+      notes: assignDto.notes
+    }));
+
+    await this.prisma.serviceRequestEmployee.createMany({
+      data: assignments
+    });
+
+    // Buscar dados atualizados
+    const updatedServiceRequest = await this.prisma.serviceRequest.findUnique({
+      where: { id },
+      include: {
+        service: { select: { displayName: true } },
+        client: { select: { fullName: true } },
+        assignedEmployees: {
+          include: {
+            employee: {
+              select: {
+                id: true,
+                name: true,
+                position: true,
+                user: { select: { email: true } }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Notificar employees atribuídos
+    const newlyAssignedEmployees = employees.filter(emp => newEmployeeIds.includes(emp.id));
+    for (const employee of newlyAssignedEmployees) {
+      const employeeUser = await this.prisma.employee.findUnique({
+        where: { id: employee.id },
+        include: { user: true }
+      });
+
+      if (employeeUser) {
+        await this.notificationsService.createNotification({
+          recipientId: employeeUser.user.id,
+          type: 'SERVICE_REQUEST_ASSIGNED',
+          title: 'Nova Atribuição de Service Request',
+          message: `Você foi atribuído à service request: ${serviceRequest.service.displayName}`,
+          data: { serviceRequestId: id }
+        });
+      }
+    }
+
+    if (!updatedServiceRequest) {
+      throw new NotFoundException('Service request not found after assignment');
+    }
+
+    return {
+      message: `${newlyAssignedEmployees.length} employee(s) assigned to service request successfully`,
+      serviceRequest: {
+        id: updatedServiceRequest.id,
+        title: updatedServiceRequest.service.displayName,
+        clientName: updatedServiceRequest.client.fullName,
+        status: updatedServiceRequest.status
+      },
+      assignedEmployees: updatedServiceRequest.assignedEmployees.map(ae => ({
+        id: ae.employee.id,
+        name: ae.employee.name,
+        position: ae.employee.position,
+        email: ae.employee.user.email,
+        assignedAt: ae.assignedAt,
+        notes: ae.notes
+      }))
+    };
+  }
+
+  async removeEmployeeFromServiceRequest(serviceRequestId: string, employeeId: string, removedBy: string) {
+    // Verificar se existe a atribuição
+    const assignment = await this.prisma.serviceRequestEmployee.findFirst({
+      where: {
+        serviceRequestId,
+        employeeId
+      },
+      include: {
+        serviceRequest: {
+          select: { id: true, projectName: true, status: true }
+        },
+        employee: {
+          select: { id: true, name: true, user: { select: { id: true } } }
+        }
+      }
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Employee assignment not found');
+    }
+
+    // Remover a atribuição
+    await this.prisma.serviceRequestEmployee.delete({
+      where: { id: assignment.id }
+    });
+
+    // Notificar o employee removido
+    await this.notificationsService.createNotification({
+      recipientId: assignment.employee.user.id,
+      type: 'SERVICE_REQUEST_UNASSIGNED',
+      title: 'Atribuição de Service Request Removida',
+      message: `Você foi removido da service request: ${assignment.serviceRequest.projectName}`,
+      data: { serviceRequestId }
+    });
+
+    return {
+      message: 'Employee removed from service request successfully',
+      removedEmployee: {
+        id: assignment.employee.id,
+        name: assignment.employee.name
+      }
+    };
+  }
+
+  async getServiceRequestEmployees(id: string) {
+    const serviceRequest = await this.prisma.serviceRequest.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        projectName: true,
+        status: true,
+        assignedEmployees: {
+          include: {
+            employee: {
+              select: {
+                id: true,
+                name: true,
+                position: true,
+                department: true,
+                user: {
+                  select: {
+                    email: true,
+                    profilePhoto: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: { assignedAt: 'desc' }
+        }
+      }
+    });
+
+    if (!serviceRequest) {
+      throw new NotFoundException('Service request not found');
+    }
+
+    return {
+      serviceRequestId: serviceRequest.id,
+      projectName: serviceRequest.projectName,
+      status: serviceRequest.status,
+      employees: serviceRequest.assignedEmployees.map(ae => ({
+        id: ae.employee.id,
+        name: ae.employee.name,
+        position: ae.employee.position,
+        department: ae.employee.department,
+        email: ae.employee.user.email,
+        profilePhoto: ae.employee.user.profilePhoto,
+        assignedAt: ae.assignedAt,
+        notes: ae.notes
+      })),
+      totalEmployees: serviceRequest.assignedEmployees.length
     };
   }
 }

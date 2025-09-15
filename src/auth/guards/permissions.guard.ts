@@ -17,10 +17,20 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const { user } = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest();
     
     // Admin has all permissions
     if (user.role === 'ADMIN') {
       return true;
+    }
+
+    // Special case: Allow employees to update task status if they're assigned to it
+    // This is checked in the service layer, not here
+    if (user.role === 'EMPLOYEE' && 
+        request.route?.path?.includes('/tasks/') && 
+        request.route?.path?.includes('/status') &&
+        request.method === 'PATCH') {
+      return true; // Allow the request to proceed, authorization checked in service
     }
 
     // Check if user is employee and has required permissions

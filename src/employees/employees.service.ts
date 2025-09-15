@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { UpdateEmployeeProfileDto } from './dto/update-employee-profile.dto';
 import { AssignPermissionsDto } from './dto/assign-permissions.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangeEmployeePasswordDto } from './dto/change-employee-password.dto';
@@ -405,6 +406,92 @@ export class EmployeesService {
       fileName: file.filename,
       originalName: file.originalname,
       uploadedAt: new Date(),
+    };
+  }
+
+  async updateEmployeeProfile(employeeId: string, updateProfileDto: UpdateEmployeeProfileDto) {
+    // Verificar se o funcionário existe
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { user: true },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found');
+    }
+
+    // Verificar se o email já existe (se fornecido)
+    if (updateProfileDto.email && updateProfileDto.email !== employee.user.email) {
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: updateProfileDto.email },
+      });
+
+      if (existingUser) {
+        throw new ConflictException('Email already exists');
+      }
+    }
+
+    // Atualizar dados do usuário (email)
+    const userUpdateData: any = {};
+    if (updateProfileDto.email) {
+      userUpdateData.email = updateProfileDto.email;
+    }
+
+    // Atualizar dados do employee (name, phone)
+    const employeeUpdateData: any = {};
+    if (updateProfileDto.name) {
+      employeeUpdateData.name = updateProfileDto.name;
+    }
+    if (updateProfileDto.phone !== undefined) {
+      employeeUpdateData.phone = updateProfileDto.phone;
+    }
+
+    // Executar atualizações
+    const [updatedEmployee] = await Promise.all([
+      // Atualizar employee
+      Object.keys(employeeUpdateData).length > 0
+        ? this.prisma.employee.update({
+            where: { id: employeeId },
+            data: employeeUpdateData,
+            include: { user: true },
+          })
+        : employee,
+      // Atualizar user se necessário
+      Object.keys(userUpdateData).length > 0
+        ? this.prisma.user.update({
+            where: { id: employee.userId },
+            data: userUpdateData,
+          })
+        : null,
+    ]);
+
+    // Buscar dados atualizados se necessário
+    const finalEmployee = Object.keys(userUpdateData).length > 0
+      ? await this.prisma.employee.findUnique({
+          where: { id: employeeId },
+          include: { user: { select: { id: true, email: true, profilePhoto: true, updatedAt: true } } },
+        })
+      : updatedEmployee;
+
+    if (!finalEmployee) {
+      throw new NotFoundException('Employee not found after update');
+    }
+
+    return {
+      message: 'Profile updated successfully',
+      employee: {
+        id: finalEmployee.id,
+        name: finalEmployee.name,
+        phone: finalEmployee.phone,
+        position: finalEmployee.position,
+        department: finalEmployee.department,
+        user: {
+          id: finalEmployee.user.id,
+          email: finalEmployee.user.email,
+          profilePhoto: finalEmployee.user.profilePhoto,
+          updatedAt: finalEmployee.user.updatedAt,
+        },
+      },
     };
   }
 }
