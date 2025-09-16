@@ -1,0 +1,971 @@
+{
+  "info": {
+    "name": "NerdZup Backend API",
+    "description": "Complete API collection for NerdZup marketing agency backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "CMS",
+      "item": [
+        {
+          "name": "Website Config",
+          "item": [
+            {
+              "name": "Get Website Config",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/cms/config",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "config"]
+                }
+              }
+            },
+            {
+              "name": "Update Website Config",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"logoUrl\": \"https://example.com/logo.png\",\n  \"whatsapp\": \"+5511999999999\",\n  \"clientCounterText\": \"Clientes Satisfeitos\",\n  \"counterText\": \"Mais de 500 projetos entregues\",\n  \"heroTitle\": \"Transforme sua presença digital\",\n  \"heroSubtitle\": \"Soluções completas em marketing digital\",\n  \"heroDescription\": \"Desenvolvemos estratégias personalizadas para fazer seu negócio crescer no mundo digital\",\n  \"processTitle\": \"Nosso Processo\",\n  \"processButtonText\": \"Começar Projeto\",\n  \"processButtonLink\": \"https://wa.me/5511999999999\",\n  \"videoTitle\": \"Veja como funciona\",\n  \"videoButtonText\": \"Assistir Vídeo\",\n  \"videoButtonLink\": \"#video\",\n  \"videoUrl\": \"https://youtube.com/embed/video-id\",\n  \"videoPosterUrl\": \"https://example.com/video-poster.jpg\",\n  \"faqTitle\": \"Perguntas Frequentes\",\n  \"footerText\": \"NerdZup - Transformando ideias em realidade digital\",\n  \"footerCopyright\": \"© 2024 NerdZup. Todos os direitos reservados.\",\n  \"instagramLink\": \"https://instagram.com/nerdzup\",\n  \"twitterLink\": \"https://twitter.com/nerdzup\",\n  \"facebookLink\": \"https://facebook.com/nerdzup\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/config",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "config"]
+                }
+              }
+            },
+            {
+              "name": "Get Public Website Config",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/cms/config/public",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "config", "public"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Service Cards",
+          "item": [
+            {
+              "name": "Create Service Card",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Design Gráfico\",\n  \"imageUrl\": \"https://example.com/design-icon.png\",\n  \"order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/service-cards",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "service-cards"]
+                }
+              }
+            },
+            {
+              "name": "Update Service Card",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Design Gráfico Profissional\",\n  \"imageUrl\": \"https://example.com/design-updated.png\",\n  \"order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/service-cards/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "service-cards", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "service-card-id"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Service Card",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/cms/service-cards/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "service-cards", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "service-card-id"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Reorder Service Cards",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\"card-id-1\", \"card-id-2\", \"card-id-3\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/service-cards/reorder",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "service-cards", "reorder"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Process Steps",
+          "item": [
+            {
+              "name": "Create Process Step",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Análise e Estratégia\",\n  \"description\": \"Analisamos seu negócio e definimos a melhor estratégia digital\",\n  \"imageUrl\": \"https://example.com/strategy-icon.png\",\n  \"order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/process-steps",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "process-steps"]
+                }
+              }
+            },
+            {
+              "name": "Update Process Step",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Análise e Estratégia Avançada\",\n  \"description\": \"Fazemos uma análise completa do seu negócio e mercado\",\n  \"imageUrl\": \"https://example.com/strategy-updated.png\",\n  \"order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/process-steps/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "process-steps", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "process-step-id"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Process Step",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/cms/process-steps/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "process-steps", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "process-step-id"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Reorder Process Steps",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\"step-id-1\", \"step-id-2\", \"step-id-3\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/process-steps/reorder",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "process-steps", "reorder"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Success Cases",
+          "item": [
+            {
+              "name": "Create Success Case",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"personName\": \"João Silva\",\n  \"personRole\": \"CEO - TechStart\",\n  \"personPhotoUrl\": \"https://example.com/joao-photo.jpg\",\n  \"caseImageUrl\": \"https://example.com/techstart-case.jpg\",\n  \"caseText\": \"A NerdZup transformou completamente nossa presença digital. Em 6 meses aumentamos nossa receita em 300%.\",\n  \"order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/success-cases",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "success-cases"]
+                }
+              }
+            },
+            {
+              "name": "Update Success Case",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"personName\": \"João Silva\",\n  \"personRole\": \"Founder & CEO - TechStart\",\n  \"personPhotoUrl\": \"https://example.com/joao-updated.jpg\",\n  \"caseImageUrl\": \"https://example.com/techstart-updated.jpg\",\n  \"caseText\": \"Trabalhamos com a NerdZup por mais de um ano. O resultado foi extraordinário: 300% de aumento na receita e presença digital consolidada.\",\n  \"order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/success-cases/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "success-cases", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "success-case-id"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Success Case",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/cms/success-cases/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "success-cases", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "success-case-id"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Reorder Success Cases",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\"case-id-1\", \"case-id-2\", \"case-id-3\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/success-cases/reorder",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "success-cases", "reorder"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Client Logos",
+          "item": [
+            {
+              "name": "Create Client Logo",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"imageUrl\": \"https://example.com/client-logo-1.png\",\n  \"altText\": \"Cliente Logo 1\",\n  \"order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/client-logos",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "client-logos"]
+                }
+              }
+            },
+            {
+              "name": "Update Client Logo",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"imageUrl\": \"https://example.com/client-logo-updated.png\",\n  \"altText\": \"Cliente Premium Logo\",\n  \"order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/client-logos/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "client-logos", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "client-logo-id"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Client Logo",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/cms/client-logos/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "client-logos", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "client-logo-id"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Reorder Client Logos",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\"logo-id-1\", \"logo-id-2\", \"logo-id-3\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/client-logos/reorder",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "client-logos", "reorder"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "FAQ Items",
+          "item": [
+            {
+              "name": "Create FAQ Item",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"question\": \"Quanto tempo leva para criar um site?\",\n  \"answer\": \"O tempo de desenvolvimento varia de acordo com a complexidade do projeto. Sites simples ficam prontos em 2-3 semanas, enquanto projetos mais complexos podem levar de 1-2 meses.\",\n  \"order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/faq-items",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "faq-items"]
+                }
+              }
+            },
+            {
+              "name": "Update FAQ Item",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"question\": \"Qual é o prazo médio para desenvolvimento de um site?\",\n  \"answer\": \"O prazo varia conforme a complexidade: sites institucionais simples ficam prontos em 2-3 semanas, e-commerces em 4-6 semanas, e projetos personalizados podem levar de 2-3 meses.\",\n  \"order\": 0\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/faq-items/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "faq-items", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "faq-item-id"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete FAQ Item",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/cms/faq-items/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "faq-items", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "faq-item-id"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Reorder FAQ Items",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\"faq-id-1\", \"faq-id-2\", \"faq-id-3\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/cms/faq-items/reorder",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["cms", "faq-items", "reorder"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "Create Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"exemplo-servico\",\n  \"displayName\": \"Exemplo de Serviço\",\n  \"description\": \"Descrição detalhada do serviço\",\n  \"shortDescription\": \"Descrição curta\",\n  \"categoryId\": \"categoria-id\",\n  \"credits\": 100,\n  \"estimatedDays\": 7,\n  \"difficulty\": \"BASICO\",\n  \"iconUrl\": \"https://example.com/icon.png\",\n  \"features\": [\"Feature 1\", \"Feature 2\"],\n  \"benefits\": [\"Benefit 1\", \"Benefit 2\"],\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"isActive\": true,\n  \"isFeatured\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["services"]
+            }
+          }
+        },
+        {
+          "name": "Create Service with Icon",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "icon",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "name",
+                  "value": "exemplo-servico",
+                  "type": "text"
+                },
+                {
+                  "key": "displayName",
+                  "value": "Exemplo de Serviço",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Descrição detalhada do serviço",
+                  "type": "text"
+                },
+                {
+                  "key": "shortDescription",
+                  "value": "Descrição curta",
+                  "type": "text"
+                },
+                {
+                  "key": "categoryId",
+                  "value": "categoria-id",
+                  "type": "text"
+                },
+                {
+                  "key": "credits",
+                  "value": "100",
+                  "type": "text"
+                },
+                {
+                  "key": "estimatedDays",
+                  "value": "7",
+                  "type": "text"
+                },
+                {
+                  "key": "difficulty",
+                  "value": "BASICO",
+                  "type": "text"
+                },
+                {
+                  "key": "features",
+                  "value": "[\"Feature 1\", \"Feature 2\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "benefits",
+                  "value": "[\"Benefit 1\", \"Benefit 2\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "tags",
+                  "value": "[\"tag1\", \"tag2\"]",
+                  "type": "text"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "isFeatured",
+                  "value": "false",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services/with-icon",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", "with-icon"]
+            }
+          }
+        },
+        {
+          "name": "Upload Service Icon",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "icon",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services/:id/upload-icon",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", ":id", "upload-icon"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "service-id"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Services",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services?page=1&limit=20&search=gestao&categoryName=marketing&activeOnly=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["services"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "search",
+                  "value": "gestao"
+                },
+                {
+                  "key": "categoryName",
+                  "value": "marketing"
+                },
+                {
+                  "key": "activeOnly",
+                  "value": "true"
+                },
+                {
+                  "key": "categoryId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "difficulty",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "minCredits",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "maxCredits",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "featuredOnly",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Service by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "service-id"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Service",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Nome Atualizado\",\n  \"description\": \"Nova descrição\",\n  \"credits\": 150\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/services/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "service-id"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Service",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["services", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "service-id"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

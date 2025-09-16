@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bem-vindo!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 10px;
+        }
+        .welcome-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #2563eb;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        .features {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .features ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .features li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">{{companyName}}</div>
+            <div class="welcome-icon">🎉</div>
+            <h1>Bem-vindo, {{name}}!</h1>
+        </div>
+        
+        <p>É um prazer tê-lo(a) conosco! Sua conta foi criada com sucesso e você já pode começar a aproveitar todos os nossos serviços.</p>
+        
+        <div class="features">
+            <h3>🚀 O que você pode fazer agora:</h3>
+            <ul>
+                <li>Acessar seu painel personalizado</li>
+                <li>Gerenciar suas campanhas de marketing</li>
+                <li>Acompanhar métricas em tempo real</li>
+                <li>Solicitar suporte da nossa equipe</li>
+                <li>Explorar nossas ferramentas avançadas</li>
+            </ul>
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="{{frontendUrl}}" class="button">Acessar Plataforma</a>
+        </div>
+        
+        <p>Se você tiver alguma dúvida ou precisar de ajuda para começar, nossa equipe está sempre disponível para ajudá-lo(a).</p>
+        
+        <p>Mais uma vez, seja bem-vindo(a) à família {{companyName}}!</p>
+        
+        <div class="footer">
+            <p>Este é um email automático, mas você pode responder caso precise de ajuda.</p>
+            <p>&copy; 2025 {{companyName}}. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>

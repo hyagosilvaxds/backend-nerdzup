@@ -1,0 +1,1115 @@
+{
+  "info": {
+    "name": "NerdZup API - Service Requests, Campaigns & Tasks",
+    "description": "Complete API collection for Service Requests, Campaigns, and Tasks management system",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set base URL if not already set",
+          "if (!pm.variables.get('baseUrl')) {",
+          "    pm.variables.set('baseUrl', 'http://localhost:3000');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "service_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "service_request_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "campaign_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "task_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "employee_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "file_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.variables.set('auth_token', response.access_token);",
+                  "    console.log('Token saved:', response.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Service Requests",
+      "item": [
+        {
+          "name": "Client Endpoints",
+          "item": [
+            {
+              "name": "Check Can Request Service",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/can-request/{{service_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "can-request", "{{service_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Create Service Request",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.variables.set('service_request_id', response.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"serviceId\": \"{{service_id}}\",\n  \"projectName\": \"Website Redesign Project\",\n  \"description\": \"Complete redesign of company website with modern UI/UX\",\n  \"desiredDeadline\": \"2024-03-01T00:00:00.000Z\",\n  \"targetAudience\": \"Young professionals aged 25-40\",\n  \"projectObjectives\": \"Increase user engagement and conversion rates\",\n  \"brandGuidelines\": \"Modern, clean, professional look\",\n  \"preferredColors\": [\"#3498db\", \"#2c3e50\", \"#ffffff\"],\n  \"technicalRequirements\": \"Responsive design, SEO optimized, fast loading\",\n  \"references\": \"Similar to apple.com and google.com design\",\n  \"observations\": \"Please prioritize mobile responsiveness\",\n  \"priority\": \"ALTA\",\n  \"dueDate\": \"2024-02-15T00:00:00.000Z\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests"]
+                }
+              }
+            },
+            {
+              "name": "Create Service Request with Files",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.variables.set('service_request_id', response.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "serviceId",
+                      "value": "{{service_id}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "projectName",
+                      "value": "Mobile App Development",
+                      "type": "text"
+                    },
+                    {
+                      "key": "description",
+                      "value": "Native iOS and Android app development",
+                      "type": "text"
+                    },
+                    {
+                      "key": "priority",
+                      "value": "ALTA",
+                      "type": "text"
+                    },
+                    {
+                      "key": "preferredColors",
+                      "value": "[\"#FF6B6B\", \"#4ECDC4\"]",
+                      "type": "text"
+                    },
+                    {
+                      "key": "documents",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests"]
+                }
+              }
+            },
+            {
+              "name": "Get My Service Requests",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/my-requests?page=1&limit=10&status=PENDENTE",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "my-requests"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "status",
+                      "value": "PENDENTE"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get My Service Request by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/my-requests/{{service_request_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "my-requests", "{{service_request_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Update My Service Request",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"projectName\": \"Updated Project Name\",\n  \"description\": \"Updated project description\",\n  \"priority\": \"CRITICA\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/my-requests/{{service_request_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "my-requests", "{{service_request_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Cancel My Service Request",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/my-requests/{{service_request_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "my-requests", "{{service_request_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Get My Stats",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/my-stats",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "my-stats"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin/Employee Endpoints",
+          "item": [
+            {
+              "name": "Get All Service Requests",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests?page=1&limit=20&status=PENDENTE&search=website",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "status",
+                      "value": "PENDENTE"
+                    },
+                    {
+                      "key": "search",
+                      "value": "website"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Service Request Stats",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/stats",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "stats"]
+                }
+              }
+            },
+            {
+              "name": "Get Service Request by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/{{service_request_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "{{service_request_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Approve Service Request",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    if (response.campaign) {",
+                      "        pm.variables.set('campaign_id', response.campaign.id);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"notes\": \"Approved with high priority due to client requirements\",\n  \"priority\": \"ALTA\",\n  \"dueDate\": \"2024-02-20T00:00:00.000Z\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/{{service_request_id}}/approve",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "{{service_request_id}}", "approve"]
+                }
+              }
+            },
+            {
+              "name": "Confirm Service Request",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"notes\": \"Confirmed and ready for development\",\n  \"priority\": \"ALTA\",\n  \"dueDate\": \"2024-02-20T00:00:00.000Z\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/{{service_request_id}}/confirm",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "{{service_request_id}}", "confirm"]
+                }
+              }
+            },
+            {
+              "name": "Reject Service Request",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rejectionReason\": \"Insufficient project requirements\",\n  \"notes\": \"Please provide more detailed technical specifications\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/{{service_request_id}}/reject",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "{{service_request_id}}", "reject"]
+                }
+              }
+            },
+            {
+              "name": "Assign Service Request",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"employeeIds\": [\"{{employee_id}}\"],\n  \"priority\": \"ALTA\",\n  \"dueDate\": \"2024-02-15T00:00:00.000Z\",\n  \"notes\": \"Assigned to senior developer for complex requirements\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/service-requests/{{service_request_id}}/assign",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["service-requests", "{{service_request_id}}", "assign"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Campaigns",
+      "item": [
+        {
+          "name": "Get All Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns?page=1&limit=10&status=ATIVO&sortBy=createdAt&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["campaigns"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "ATIVO"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get My Campaigns (Employee)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/my-campaigns?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["campaigns", "my-campaigns"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Client Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/client/{{client_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["campaigns", "client", "{{client_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get My Client Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/client",
+              "host": ["{{baseUrl}}"],
+              "path": ["campaigns", "client"]
+            }
+          }
+        },
+        {
+          "name": "Get Campaign by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/{{campaign_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["campaigns", "{{campaign_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Assign Employees to Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeIds\": [\"{{employee_id}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/{{campaign_id}}/assign-employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["campaigns", "{{campaign_id}}", "assign-employees"]
+            }
+          }
+        },
+        {
+          "name": "Remove Employees from Campaign",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeIds\": [\"{{employee_id}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/campaigns/{{campaign_id}}/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["campaigns", "{{campaign_id}}", "employees"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "General Endpoints",
+          "item": [
+            {
+              "name": "Create Task",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.variables.set('task_id', response.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Homepage Design\",\n  \"description\": \"Design the main homepage layout and components\",\n  \"serviceId\": \"{{service_id}}\",\n  \"clientId\": \"{{client_id}}\",\n  \"campaignId\": \"{{campaign_id}}\",\n  \"status\": \"BACKLOG\",\n  \"priority\": \"ALTA\",\n  \"progress\": 0,\n  \"dueDate\": \"2024-02-10T00:00:00.000Z\",\n  \"employeeIds\": [\"{{employee_id}}\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/tasks",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks"]
+                }
+              }
+            },
+            {
+              "name": "Get All Tasks",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks?page=1&limit=20&status=BACKLOG&priority=ALTA&search=design&sortBy=dueDate&sortOrder=asc",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20"
+                    },
+                    {
+                      "key": "status",
+                      "value": "BACKLOG"
+                    },
+                    {
+                      "key": "priority",
+                      "value": "ALTA"
+                    },
+                    {
+                      "key": "search",
+                      "value": "design"
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "dueDate"
+                    },
+                    {
+                      "key": "sortOrder",
+                      "value": "asc"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get My Tasks (Employee)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/my-tasks?page=1&limit=10&status=EM_ANDAMENTO",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "my-tasks"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "status",
+                      "value": "EM_ANDAMENTO"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get My Client Tasks",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/client",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "client"]
+                }
+              }
+            },
+            {
+              "name": "Get Client Tasks",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/client/{{client_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "client", "{{client_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Get Kanban Board",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/kanban?clientId={{client_id}}&employeeId={{employee_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "kanban"],
+                  "query": [
+                    {
+                      "key": "clientId",
+                      "value": "{{client_id}}"
+                    },
+                    {
+                      "key": "employeeId",
+                      "value": "{{employee_id}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Task Stats",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/stats?clientId={{client_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "stats"],
+                  "query": [
+                    {
+                      "key": "clientId",
+                      "value": "{{client_id}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Status Options",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/status-options",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "status-options"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Task Management",
+          "item": [
+            {
+              "name": "Check Overdue Tasks",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/check-overdue",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "check-overdue"]
+                }
+              }
+            },
+            {
+              "name": "Get Approval Center",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/approval-center?page=1&limit=10",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "approval-center"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Approve Task",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"comment\": \"Task approved! Great work on the design.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}/approve",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}", "approve"]
+                }
+              }
+            },
+            {
+              "name": "Toggle Task Status",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}/toggle-status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}", "toggle-status"]
+                }
+              }
+            },
+            {
+              "name": "Archive Task",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}/archive",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}", "archive"]
+                }
+              }
+            },
+            {
+              "name": "Get Task by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Update Task",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Updated Homepage Design\",\n  \"description\": \"Updated design requirements with new specifications\",\n  \"priority\": \"CRITICA\",\n  \"dueDate\": \"2024-02-05T00:00:00.000Z\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Update Task Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"EM_ANDAMENTO\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}/status",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}", "status"]
+                }
+              }
+            },
+            {
+              "name": "Update Task Progress",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"progress\": 75\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}/progress",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}", "progress"]
+                }
+              }
+            },
+            {
+              "name": "Assign Employees to Task",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"employeeIds\": [\"{{employee_id}}\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}/assign",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}", "assign"]
+                }
+              }
+            },
+            {
+              "name": "Delete Task",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Comments & Files",
+          "item": [
+            {
+              "name": "Add Comment to Task",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"This is a progress update comment on the task.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}/comments",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}", "comments"]
+                }
+              }
+            },
+            {
+              "name": "Add Inspiration File",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "description",
+                      "value": "Design inspiration reference",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}/files/inspiration",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}", "files", "inspiration"]
+                }
+              }
+            },
+            {
+              "name": "Add Deliverable File",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "description",
+                      "value": "Final deliverable file",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}/files/deliverable",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}", "files", "deliverable"]
+                }
+              }
+            },
+            {
+              "name": "Add File by URL",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fileName\": \"design-reference.jpg\",\n  \"fileUrl\": \"https://example.com/files/design-reference.jpg\",\n  \"description\": \"External design reference\",\n  \"fileType\": \"INSPIRATION\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}/files/url",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}", "files", "url"]
+                }
+              }
+            },
+            {
+              "name": "Remove File",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/tasks/{{task_id}}/files/{{file_id}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["tasks", "{{task_id}}", "files", "{{file_id}}"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

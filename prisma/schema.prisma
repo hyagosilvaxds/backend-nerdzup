@@ -6,10 +6,1062 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  EMPLOYEE
+  ADMIN
+}
+
+enum PersonType {
+  INDIVIDUAL  // Pessoa Física
+  BUSINESS    // Pessoa Jurídica
+}
+
+enum CompanySize {
+  MICRO       // 1-10 funcionários
+  SMALL       // 11-50 funcionários
+  MEDIUM      // 51-200 funcionários
+  LARGE       // 201-1000 funcionários
+  ENTERPRISE  // 1000+ funcionários
+}
+
+enum Permission {
+  READ_CLIENTS
+  WRITE_CLIENTS
+  DELETE_CLIENTS
+  READ_EMPLOYEES
+  WRITE_EMPLOYEES
+  DELETE_EMPLOYEES
+  READ_CAMPAIGNS
+  WRITE_CAMPAIGNS
+  DELETE_CAMPAIGNS
+  READ_TASKS
+  WRITE_TASKS
+  DELETE_TASKS
+  CREATE_TASKS_FOR_OTHERS
+  MANAGE_PERMISSIONS
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  role         Role     @default(CLIENT)
+  isActive     Boolean  @default(true)
+  profilePhoto String?  // URL da foto de perfil
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  client        Client?
+  employee      Employee?
+  taskComments  TaskComment[]
+  campaignComments CampaignComment[]
+  apiKeys       ApiKey[]
+  websiteConfigs WebsiteConfig[]
+  clientNotes   ClientNote[]
+  uploadedLibraryFiles ClientLibraryFile[]
+  createdConversations Conversation[] @relation("ConversationCreator")
+  conversationParticipants ConversationParticipant[]
+  sentMessages  Message[] @relation("MessageSender")
+  notifications Notification[]
+  messageReadReceipts MessageReadReceipt[]
+
+  @@map("users")
+}
+
+model Client {
+  id               String       @id @default(cuid())
+  userId           String       @unique
+  
+  // Personal/Business Information (all optional for flexible enrollment)
+  fullName         String?      // Nome completo
+  personType       PersonType?  // Pessoa física ou jurídica
+  taxDocument      String?      // CPF ou CNPJ
+  position         String?      // Cargo
+  
+  // Company Information (for BUSINESS type)
+  companyName      String?      // Razão social
+  tradeName        String?      // Nome fantasia
+  sector           String?      // Setor de atuação
+  companySize      CompanySize?
+  website          String?
+  
+  // Contact Information
+  phone            String?
+  
+  // Address Information
+  street           String?
+  city             String?
+  state            String?
+  zipCode          String?
+  country          String?      @default("Brasil")
+  
+  // System fields
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  // Relations
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns        Campaign[]
+  tasks            Task[]
+  wallet           ClientWallet?
+  subscriptions    Subscription[]
+  transactions     Transaction[]
+  serviceRequests  ServiceRequest[]
+  notes            ClientNote[]
+  libraryFiles     ClientLibraryFile[]
+
+  @@map("clients")
+}
+
+model ClientLibraryFile {
+  id           String         @id @default(cuid())
+  clientId     String                            // Cliente proprietário
+  fileName     String                            // Nome do arquivo no servidor
+  originalName String                            // Nome original do arquivo
+  fileUrl      String                            // URL do arquivo
+  fileType     ClientFileType @default(OTHER)    // Tipo do arquivo
+  fileSize     Int                              // Tamanho em bytes
+  mimeType     String                            // Tipo MIME
+  description  String?                           // Descrição do arquivo
+  uploadedBy   String                            // Usuário que fez upload
+  uploadedAt   DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // Relations
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploader     User           @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+
+  @@map("client_library_files")
+}
+
+model Employee {
+  id          String       @id @default(cuid())
+  userId      String       @unique
+  name        String
+  position    String
+  department  String?
+  phone       String?
+  hireDate    DateTime     @default(now())
+  salary      Decimal?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissions EmployeePermissions[]
+  campaignAssignments CampaignAssignee[]
+  taskAssignments TaskAssignee[]
+  serviceRequestAssignments ServiceRequestEmployee[]
+
+  @@map("employees")
+}
+
+model EmployeePermissions {
+  id         String     @id @default(cuid())
+  employeeId String
+  permission Permission
+  grantedAt  DateTime   @default(now())
+  grantedBy  String
+
+  // Relations
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, permission])
+  @@map("employee_permissions")
+}
+
+model Campaign {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  budget      Decimal?
+  startDate   DateTime
+  endDate     DateTime?
+  status      String   @default("DRAFT")
+  clientId    String
+  serviceRequestId String? // ServiceRequest que originou a campanha
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceRequest ServiceRequest? @relation(fields: [serviceRequestId], references: [id], onDelete: SetNull)
+  assignees CampaignAssignee[] // Funcionários atribuídos à campanha
+  tasks    Task[]
+  conversations Conversation[] // Conversas relacionadas
+  comments CampaignComment[] // Comentários da campanha
+
+  @@map("campaigns")
+}
+
+model CampaignAssignee {
+  id         String   @id @default(cuid())
+  campaignId String
+  employeeId String
+  assignedAt DateTime @default(now())
+  assignedBy String   // ID do funcionário que fez a atribuição
+
+  // Relations
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, employeeId])
+  @@map("campaign_assignees")
+}
+
+model CampaignComment {
+  id         String   @id @default(cuid())
+  campaignId String
+  authorId   String                        // ID do usuário (cliente ou funcionário)
+  content    String                        // Conteúdo do comentário
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_comments")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_tokens")
+}
+
+model LoginCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("login_codes")
+}
+
+model SmtpConfiguration {
+  id          String   @id @default(cuid())
+  name        String   @unique // Nome da configuração (e.g., "default", "gmail", "outlook")
+  host        String
+  port        Int
+  secure      Boolean  @default(true) // SSL/TLS
+  user        String   // Email do remetente
+  password    String   // Senha ou app password
+  fromName    String   @default("Nerdzup Marketing") // Nome que aparece no "from"
+  fromEmail   String   // Email que aparece no "from"
+  isActive    Boolean  @default(false) // Apenas uma config pode estar ativa por vez
+  isDefault   Boolean  @default(false) // Config padrão do sistema
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("smtp_configurations")
+}
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique // Nome único do template (e.g., "welcome", "password-reset")
+  displayName String   // Nome para exibição
+  subject     String   // Assunto do email
+  htmlContent String   // Conteúdo HTML (pode usar variáveis como {{name}})
+  textContent String?  // Conteúdo em texto plano (opcional)
+  variables   String[] // Array com nomes das variáveis disponíveis (e.g., ["name", "email", "resetUrl"])
+  isActive    Boolean  @default(true)
+  category    String   @default("general") // Categoria: auth, marketing, notification, etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
+enum InputType {
+  TEXT
+  EMAIL
+  NUMBER
+  FILE
+  SELECT_2  // 2 opções (botões)
+  SELECT_3  // 3 opções
+  SELECT_4  // 4 opções
+  SELECT_5  // 5 opções
+  SELECT_6  // 6 opções
+  TEXTAREA
+  PHONE
+  DATE
+}
+
+model LeadForm {
+  id                String            @id @default(cuid())
+  name              String            @unique // Nome único do formulário
+  displayName       String            // Nome para exibição
+  description       String?           // Descrição do formulário
+  initialText       String            // Texto inicial fixo
+  isActive          Boolean           @default(true)
+  allowMultipleSubmissions Boolean    @default(false) // Permite múltiplas submissões do mesmo lead
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  steps             LeadFormStep[]
+  submissions       LeadSubmission[]
+
+  @@map("lead_forms")
+}
+
+model LeadFormStep {
+  id          String            @id @default(cuid())
+  formId      String
+  stepNumber  Int               // Ordem do step (1, 2, 3...)
+  title       String            // Título do step
+  description String?           // Descrição opcional do step
+  isRequired  Boolean           @default(true) // Step obrigatório
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  form        LeadForm          @relation(fields: [formId], references: [id], onDelete: Cascade)
+  inputs      LeadFormInput[]
+
+  @@unique([formId, stepNumber])
+  @@map("lead_form_steps")
+}
+
+model LeadFormInput {
+  id            String      @id @default(cuid())
+  stepId        String
+  inputKey      String      // Chave única para identificar o input (ex: "company_name", "email")
+  label         String      // Label exibido para o usuário
+  inputType     InputType   // Tipo do input
+  placeholder   String?     // Placeholder do input
+  options       String[]    // Opções para SELECT (ex: ["Opção 1", "Opção 2"])
+  isRequired    Boolean     @default(true)
+  validationRegex String?   // Regex para validação personalizada
+  helpText      String?     // Texto de ajuda
+  order         Int         @default(0) // Ordem dentro do step
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  step          LeadFormStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@unique([stepId, inputKey])
+  @@map("lead_form_inputs")
+}
+
+model LeadSubmission {
+  id            String                    @id @default(cuid())
+  formId        String
+  email         String?                   // Email do lead (se fornecido)
+  ipAddress     String?                   // IP para controle de spam
+  userAgent     String?                   // User agent para analytics
+  isCompleted   Boolean                   @default(false) // Formulário completamente preenchido
+  completedAt   DateTime?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  // Relations
+  form          LeadForm                  @relation(fields: [formId], references: [id])
+  responses     LeadSubmissionResponse[]
+
+  @@map("lead_submissions")
+}
+
+model LeadSubmissionResponse {
+  id            String          @id @default(cuid())
+  submissionId  String
+  stepId        String
+  inputKey      String          // Chave do input que foi respondido
+  value         String          // Valor da resposta (sempre string, conversões feitas na aplicação)
+  fileUrl       String?         // URL do arquivo se input type for FILE
+  createdAt     DateTime        @default(now())
+
+  // Relations
+  submission    LeadSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, stepId, inputKey])
+  @@map("lead_submission_responses")
+}
+
+enum ServiceDifficulty {
+  BASICO
+  INTERMEDIARIO  
+  AVANCADO
+}
+
+enum TaskStatus {
+  BACKLOG    // Tarefa na fila
+  ANDAMENTO  // Em progresso
+  REVISAO    // Em revisão
+  CONCLUIDO  // Finalizada
+  ATRASADO   // Fora do prazo
+  ARQUIVADO  // Arquivada
+}
+
+enum TaskPriority {
+  BAIXA      // Prioridade baixa
+  MEDIA      // Prioridade média
+  ALTA       // Prioridade alta
+  URGENTE    // Prioridade urgente
+}
+
+enum TaskFileType {
+  INSPIRATION  // Arquivo de inspiração (cliente)
+  DELIVERABLE  // Arquivo entregável (funcionário)
+}
+
+enum ClientFileType {
+  REFERENCE    // Arquivo de referência
+  BRAND_ASSET  // Ativo de marca (logos, guias de estilo)
+  DOCUMENT     // Documento geral
+  OTHER        // Outros tipos de arquivo
+}
+
+enum SubscriptionStatus {
+  ACTIVE     // Assinatura ativa
+  CANCELLED  // Cancelada
+  EXPIRED    // Expirada
+  SUSPENDED  // Suspensa
+}
+
+enum PaymentMethod {
+  CREDIT_CARD  // Cartão de crédito
+  PIX          // PIX
+  BANK_SLIP    // Boleto bancário
+}
+
+enum TransactionType {
+  SUBSCRIPTION_PAYMENT  // Pagamento de assinatura
+  CREDIT_PURCHASE      // Compra de créditos avulsa
+  CREDIT_ADJUSTMENT    // Ajuste manual de créditos
+  SERVICE_CONSUMPTION  // Consumo de créditos por serviço
+}
+
+model ServiceCategory {
+  id          String    @id @default(cuid())
+  name        String    @unique          // Nome único da categoria
+  displayName String                     // Nome para exibição
+  description String?                    // Descrição da categoria
+  iconUrl     String?                    // URL do ícone da categoria
+  color       String?                    // Cor hexadecimal para UI (#FF5733)
+  isActive    Boolean   @default(true)   // Categoria ativa/inativa
+  order       Int       @default(0)      // Ordem de exibição
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  services    Service[]
+
+  @@map("service_categories")
+}
+
+model Service {
+  id                String            @id @default(cuid())
+  name              String            @unique          // Nome único do serviço
+  displayName       String                             // Nome para exibição
+  description       String                             // Descrição detalhada do serviço
+  shortDescription  String?                            // Descrição curta/resumo
+  categoryId        String                             // ID da categoria
+  credits           Int                                // Custo em créditos
+  estimatedDays     Int                                // Tempo estimado em dias
+  difficulty        ServiceDifficulty                  // Nível de dificuldade
+  rating            Float             @default(0.0)    // Avaliação (0.0 a 5.0)
+  ratingCount       Int               @default(0)      // Quantidade de avaliações
+  iconUrl           String?                            // URL do ícone/foto do serviço
+  features          String[]                           // Recursos (array de strings)
+  benefits          String[]                           // Benefícios (array de strings)
+  isActive          Boolean           @default(true)   // Serviço ativo/inativo
+  isFeatured        Boolean           @default(false)  // Serviço destacado
+  tags              String[]                           // Tags para busca
+  order             Int               @default(0)      // Ordem de exibição na categoria
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  category          ServiceCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  tasks             Task[]
+  transactions      Transaction[]
+  serviceCards      ServiceCard[]
+  serviceRequests   ServiceRequest[]
+
+  @@map("services")
+}
+
+model Task {
+  id            String        @id @default(cuid())
+  title         String                         // Título da tarefa
+  description   String?                        // Descrição detalhada
+  serviceId     String                         // Serviço vinculado
+  clientId      String                         // Cliente vinculado  
+  campaignId    String?                        // Campanha vinculada (opcional)
+  status        TaskStatus    @default(BACKLOG) // Status da tarefa
+  priority      TaskPriority  @default(MEDIA)   // Prioridade da tarefa
+  progress      Int           @default(0)       // Progresso (0-100%)
+  estimatedHours Int?                          // Horas estimadas
+  spentHours    Int           @default(0)       // Horas gastas
+  dueDate       DateTime?                       // Prazo de conclusão
+  completedAt   DateTime?                       // Data de conclusão
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  service       Service       @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  campaign      Campaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  assignees     TaskAssignee[] // Funcionários atribuídos
+  files         TaskFile[]     // Arquivos anexados
+  comments      TaskComment[]  // Comentários
+  conversations Conversation[] // Conversas relacionadas
+  serviceRequest ServiceRequest? // Solicitação que originou esta task
+
+  @@map("tasks")
+}
+
+enum ServiceRequestStatus {
+  PENDING     // Aguardando aprovação
+  APPROVED    // Aprovado e créditos deduzidos
+  REJECTED    // Rejeitado
+  CANCELLED   // Cancelado pelo cliente
+}
+
+model ServiceRequest {
+  id            String              @id @default(cuid())
+  serviceId     String                                   // Serviço solicitado
+  clientId      String                                   // Cliente solicitante
+  status        ServiceRequestStatus @default(PENDING)  // Status da solicitação
+  creditsCost   Int                                      // Créditos necessários (snapshot do preço)
+  
+  // Informações detalhadas do projeto
+  projectName         String                             // Nome do projeto
+  description         String                             // Descrição do projeto
+  desiredDeadline     DateTime?                          // Prazo desejado
+  targetAudience      String?                            // Público alvo
+  projectObjectives   String?                            // Objetivos do projeto
+  brandGuidelines     String?                            // Diretrizes da marca
+  preferredColors     String[]          @default([])     // Cores preferidas
+  technicalRequirements String?                          // Requisitos técnicos
+  references          String?                            // Referências
+  documentUrls        String[]          @default([])     // URLs dos documentos
+  observations        String?                            // Observações
+  
+  // Campos antigos mantidos para compatibilidade
+  notes         String?                                  // Notas internas da equipe
+  priority      TaskPriority        @default(MEDIA)     // Prioridade desejada
+  dueDate       DateTime?                               // Prazo desejado pelo cliente
+  approvedBy    String?                                 // ID do funcionário que aprovou
+  rejectedBy    String?                                 // ID do funcionário que rejeitado
+  rejectionReason String?                              // Motivo da rejeição
+  approvedAt    DateTime?                               // Data de aprovação
+  rejectedAt    DateTime?                               // Data de rejeição
+  taskId        String?             @unique            // Task criada (se aprovado)
+  campaignId    String?                                // Campanha criada (se aprovado)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  // Relations
+  service       Service             @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  client        Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  task          Task?               @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  campaigns     Campaign[]          // Campanhas criadas a partir desta solicitação
+  assignedEmployees ServiceRequestEmployee[] // Employees atribuídos
+
+  @@map("service_requests")
+}
+
+model ServiceRequestEmployee {
+  id               String         @id @default(cuid())
+  serviceRequestId String                         // ID da service request
+  employeeId       String                         // ID do employee
+  assignedAt       DateTime       @default(now()) // Data de atribuição
+  assignedBy       String                         // ID do admin que fez a atribuição
+  notes            String?                        // Observações da atribuição
+
+  // Relations
+  serviceRequest   ServiceRequest @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+  employee         Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceRequestId, employeeId])
+  @@map("service_request_employees")
+}
+
+model TaskAssignee {
+  id         String   @id @default(cuid())
+  taskId     String   
+  employeeId String
+  assignedAt DateTime @default(now())
+  assignedBy String   // ID do funcionário que fez a atribuição
+
+  // Relations
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, employeeId])
+  @@map("task_assignees")
+}
+
+model TaskFile {
+  id          String       @id @default(cuid())
+  taskId      String
+  fileName    String                        // Nome original do arquivo
+  fileUrl     String                        // URL do arquivo
+  fileType    TaskFileType                  // Tipo do arquivo
+  uploadedBy  String                        // ID do usuário que fez upload
+  uploadedAt  DateTime     @default(now())
+  description String?                       // Descrição do arquivo
+
+  // Relations
+  task        Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("task_files")
+}
+
+model TaskComment {
+  id          String   @id @default(cuid())
+  taskId      String
+  authorId    String                        // ID do usuário (cliente ou funcionário)
+  content     String                        // Conteúdo do comentário
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("task_comments")
+}
+
+model ClientWallet {
+  id              String    @id @default(cuid())
+  clientId        String    @unique           // Cliente proprietário
+  availableCredits Int      @default(0)       // Créditos disponíveis
+  totalEarned     Int       @default(0)       // Total de créditos ganhos
+  totalSpent      Int       @default(0)       // Total de créditos gastos
+  lastTransaction DateTime?                   // Data da última transação
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_wallets")
+}
+
+model SubscriptionPlan {
+  id              String         @id @default(cuid())
+  name            String         @unique        // Nome do plano
+  displayName     String                        // Nome para exibição
+  description     String?                       // Descrição do plano
+  monthlyCredits  Int                          // Créditos concedidos por mês
+  monthlyPrice    Decimal                      // Preço mensal em reais
+  annualPrice     Decimal?                     // Preço anual em reais (opcional)
+  discountType    String?                      // Tipo de desconto: "PERCENTAGE" ou "VALUE"
+  discountValue   Decimal?                     // Valor do desconto (% ou valor fixo)
+  isActive        Boolean        @default(true) // Plano ativo/inativo
+  isPopular       Boolean        @default(false) // Plano popular/destacado
+  benefits        String[]                     // Benefícios inclusos
+  order           Int            @default(0)    // Ordem de exibição
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  subscriptions   Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id              String             @id @default(cuid())
+  clientId        String                             // Cliente assinante
+  planId          String                             // Plano contratado
+  status          SubscriptionStatus @default(ACTIVE) // Status da assinatura
+  startDate       DateTime           @default(now()) // Data de início
+  endDate         DateTime?                          // Data de fim (cancelamento)
+  nextBillingDate DateTime                           // Próxima cobrança
+  paymentMethod   PaymentMethod      @default(CREDIT_CARD) // Método de pagamento
+  isAutoRenew     Boolean            @default(true)  // Renovação automática
+  isAnnual        Boolean            @default(false) // Cobrança anual ou mensal
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relations
+  client          Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  plan            SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@map("subscriptions")
+}
+
+model ClientNote {
+  id        String   @id @default(cuid())
+  clientId  String                   // Cliente relacionado
+  note      String                   // Conteúdo da nota
+  authorId  String                   // Funcionário que criou a nota
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@map("client_notes")
+}
+
+model CreditPackage {
+  id          String    @id @default(cuid())
+  name        String    @unique              // Nome do pacote
+  displayName String                         // Nome para exibição
+  description String?                        // Descrição do pacote
+  credits     Int                           // Quantidade de créditos
+  price       Decimal                       // Preço em reais
+  bonusCredits Int      @default(0)         // Créditos bônus
+  isActive    Boolean   @default(true)      // Pacote ativo/inativo
+  isPopular   Boolean   @default(false)     // Pacote popular/destacado
+  order       Int       @default(0)         // Ordem de exibição
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("credit_packages")
+}
+
+model Transaction {
+  id              String          @id @default(cuid())
+  clientId        String                          // Cliente da transação
+  type            TransactionType                 // Tipo da transação
+  amount          Decimal                        // Valor monetário (em reais)
+  credits         Int                            // Quantidade de créditos
+  description     String                         // Descrição da transação
+  paymentMethod   PaymentMethod?                 // Método de pagamento (se aplicável)
+  externalId      String?                        // ID externo (gateway de pagamento)
+  status          String          @default("PENDING") // Status: PENDING, COMPLETED, FAILED, CANCELLED
+  processedAt     DateTime?                      // Data de processamento
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Referências opcionais
+  subscriptionId  String?                        // Referência para assinatura
+  packageId       String?                        // Referência para pacote de créditos
+  serviceId       String?                        // Referência para serviço consumido
+  taskId          String?                        // Referência para tarefa que consumiu créditos
+
+  // Relations
+  client          Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  service         Service?        @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  @@map("transactions")
+}
+
+enum ApiKeyProvider {
+  OPENAI
+  STRIPE
+}
+
+model ApiKey {
+  id            String         @id @default(cuid())
+  name          String                          // Nome descritivo da chave
+  provider      ApiKeyProvider                  // Provedor (OpenAI, Stripe)
+  keyValue      String                          // Valor da chave (criptografado)
+  isActive      Boolean        @default(true)   // Se a chave está ativa
+  environment   String         @default("production") // test, production
+  description   String?                         // Descrição adicional
+  lastUsed      DateTime?                       // Última vez que foi usada
+  usageCount    Int            @default(0)      // Contador de uso
+  createdBy     String                          // ID do usuário que criou
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relations
+  creator       User           @relation(fields: [createdBy], references: [id])
+
+  @@map("api_keys")
+}
+
+model WebsiteConfig {
+  id                  String    @id @default(cuid())
+  
+  // Geral
+  logoUrl             String?                      // URL do logo
+  faviconUrl          String?                      // URL do favicon
+  siteName            String?                      // Nome do site
+  supportEmail        String?                      // Email de suporte
+  siteDescription     String?                      // Descrição do site
+  whatsapp            String?                      // Número WhatsApp
+  clientsCounter      String?                      // Contador de clientes
+  counterText         String?                      // Texto do contador
+  
+  // Hero
+  heroTitle           String?                      // Título principal
+  heroSubtitle        String?                      // Subtítulo
+  heroDescription     String?                      // Descrição
+  
+  // Processo
+  processTitle        String?                      // Título da seção processo
+  processButtonText   String?                      // Texto do botão
+  processButtonLink   String?                      // Link do botão
+  
+  // Seção do vídeo
+  videoTitle          String?                      // Título da seção vídeo
+  videoButtonText     String?                      // Texto do botão
+  videoButtonLink     String?                      // Link do botão
+  videoUrl            String?                      // URL do vídeo
+  videoPosterUrl      String?                      // Poster do vídeo
+  
+  // FAQ
+  faqTitle            String?                      // Título do FAQ
+  
+  // Footer
+  footerText          String?                      // Texto principal do footer
+  footerCopyright     String?                      // Copyright
+  instagramLink       String?                      // Link Instagram
+  twitterLink         String?                      // Link Twitter
+  facebookLink        String?                      // Link Facebook
+  
+  updatedBy           String                       // Quem atualizou
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  updater             User      @relation(fields: [updatedBy], references: [id])
+  serviceCards        ServiceCard[]
+  processSteps        ProcessStep[]
+  successCases        SuccessCase[]
+  clientLogos         ClientLogo[]
+  faqItems            FaqItem[]
+
+  @@map("website_config")
+}
+
+model ServiceCard {
+  id              String         @id @default(cuid())
+  websiteConfigId String
+  serviceId       String?                         // ID do serviço relacionado (opcional)
+  title           String                          // Título do card
+  imageUrl        String                          // URL da imagem
+  order           Int            @default(0)      // Ordem de exibição
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  websiteConfig   WebsiteConfig  @relation(fields: [websiteConfigId], references: [id], onDelete: Cascade)
+  service         Service?       @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  @@map("service_cards")
+}
+
+model ProcessStep {
+  id              String         @id @default(cuid())
+  websiteConfigId String
+  title           String                          // Título do passo
+  description     String                          // Descrição do passo
+  imageUrl        String                          // URL da imagem
+  order           Int            @default(0)      // Ordem de exibição
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  websiteConfig   WebsiteConfig  @relation(fields: [websiteConfigId], references: [id], onDelete: Cascade)
+
+  @@map("process_steps")
+}
+
+model SuccessCase {
+  id              String         @id @default(cuid())
+  websiteConfigId String
+  personName      String                          // Nome da pessoa
+  personRole      String                          // Cargo/empresa
+  personPhotoUrl  String                          // Foto da pessoa
+  caseImageUrl    String                          // Imagem do case
+  caseText        String                          // Texto do case
+  order           Int            @default(0)      // Ordem de exibição
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  websiteConfig   WebsiteConfig  @relation(fields: [websiteConfigId], references: [id], onDelete: Cascade)
+
+  @@map("success_cases")
+}
+
+model ClientLogo {
+  id              String         @id @default(cuid())
+  websiteConfigId String
+  imageUrl        String                          // URL da imagem do logo
+  altText         String?                         // Texto alternativo
+  order           Int            @default(0)      // Ordem de exibição
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  websiteConfig   WebsiteConfig  @relation(fields: [websiteConfigId], references: [id], onDelete: Cascade)
+
+  @@map("client_logos")
+}
+
+model FaqItem {
+  id              String         @id @default(cuid())
+  websiteConfigId String
+  question        String                          // Pergunta
+  answer          String                          // Resposta
+  order           Int            @default(0)      // Ordem de exibição
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  websiteConfig   WebsiteConfig  @relation(fields: [websiteConfigId], references: [id], onDelete: Cascade)
+
+  @@map("faq_items")
+}
+
+model Notification {
+  id          String             @id @default(cuid())
+  recipientId String                                    // ID do usuário destinatário
+  type        NotificationType                          // Tipo da notificação
+  title       String                                    // Título da notificação
+  message     String                                    // Mensagem da notificação
+  data        Json?                                     // Dados extras em JSON
+  isRead      Boolean            @default(false)        // Lida ou não
+  actionUrl   String?                                   // URL para ação (opcional)
+  priority    NotificationPriority @default(MEDIUM)     // Prioridade da notificação
+  expiresAt   DateTime?                                 // Data de expiração (opcional)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Relations
+  recipient   User              @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  SERVICE_REQUEST_APPROVED
+  SERVICE_REQUEST_REJECTED
+  SERVICE_REQUEST_ASSIGNED
+  SERVICE_REQUEST_UNASSIGNED
+  SERVICE_REQUEST_COMPLETED
+  TASK_ASSIGNED
+  TASK_COMPLETED
+  TASK_DUE_SOON
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  SUBSCRIPTION_EXPIRED
+  SUBSCRIPTION_RENEWED
+  CREDITS_LOW
+  CREDITS_ADJUSTMENT
+  SYSTEM_ANNOUNCEMENT
+  GENERAL
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ConversationType {
+  INDIVIDUAL  // Chat individual (1:1)
+  GROUP      // Chat em grupo
+}
+
+enum MessageType {
+  TEXT       // Mensagem de texto
+  FILE       // Arquivo
+  IMAGE      // Imagem
+  DOCUMENT   // Documento
+}
+
+enum ParticipantRole {
+  ADMIN      // Administrador da conversa
+  MEMBER     // Membro regular
+}
+
+model Conversation {
+  id            String           @id @default(cuid())
+  title         String?                           // Título da conversa (obrigatório para grupos)
+  type          ConversationType @default(INDIVIDUAL) // Tipo da conversa
+  taskId        String?                           // Tarefa vinculada (opcional)
+  campaignId    String?                           // Campanha vinculada (opcional)
+  isActive      Boolean          @default(true)   // Se a conversa está ativa
+  createdBy     String                            // ID do usuário que criou
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  lastMessageAt DateTime?                         // Timestamp da última mensagem
+
+  // Relations
+  creator       User             @relation("ConversationCreator", fields: [createdBy], references: [id])
+  task          Task?            @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  campaign      Campaign?        @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  participants  ConversationParticipant[]
+  messages      Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String          @id @default(cuid())
+  conversationId String
+  userId         String
+  role           ParticipantRole @default(MEMBER)   // Papel na conversa
+  joinedAt       DateTime        @default(now())    // Quando entrou na conversa
+  lastReadAt     DateTime?                          // Última vez que leu as mensagens
+  isActive       Boolean         @default(true)     // Se ainda está participando
+
+  // Relations
+  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String      @id @default(cuid())
+  conversationId String
+  senderId       String                           // ID do usuário que enviou
+  content        String?                          // Conteúdo da mensagem (texto)
+  messageType    MessageType @default(TEXT)       // Tipo da mensagem
+  fileUrl        String?                          // URL do arquivo (se aplicável)
+  fileName       String?                          // Nome original do arquivo
+  fileSize       Int?                             // Tamanho do arquivo em bytes
+  mimeType       String?                          // Tipo MIME do arquivo
+  replyToId      String?                          // ID da mensagem que está respondendo
+  editedAt       DateTime?                        // Timestamp da última edição
+  isDeleted      Boolean     @default(false)      // Se a mensagem foi deletada
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  // Relations
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id])
+  replyTo        Message?     @relation("MessageReply", fields: [replyToId], references: [id])
+  replies        Message[]    @relation("MessageReply")
+  readReceipts   MessageReadReceipt[]
+
+  @@map("messages")
+}
+
+model MessageReadReceipt {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String                            // ID do usuário que leu
+  readAt    DateTime @default(now())          // Quando foi lida
+
+  // Relations
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_read_receipts")
 }
