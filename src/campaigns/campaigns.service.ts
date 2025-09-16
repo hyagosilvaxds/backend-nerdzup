@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssignEmployeesToCampaignDto } from './dto/assign-employees-to-campaign.dto';
 import { QueryCampaignsDto } from './dto/query-campaigns.dto';
 import { QueryTasksDto } from './dto/query-tasks.dto';
+import { QueryAdvancedTasksDto } from './dto/query-advanced-tasks.dto';
+import { ClientTaskActionDto, ClientTaskAction } from './dto/client-task-action.dto';
 import { CreateCampaignTaskDto } from './dto/create-campaign-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
@@ -412,6 +414,7 @@ export class CampaignsService {
               id: true,
               email: true,
               role: true,
+              profilePhoto: true,
               employee: {
                 select: {
                   name: true
@@ -440,7 +443,11 @@ export class CampaignsService {
       return {
         ...campaign,
         files: taskFiles,
-        comments: taskComments,
+        comments: taskComments.map(comment => ({
+          ...comment,
+          authorName: comment.author.employee?.name || comment.author.client?.fullName || comment.author.email,
+          authorProfilePhoto: comment.author.profilePhoto
+        })),
         totals: {
           estimatedHours: totalEstimatedHours,
           spentHours: totalSpentHours,
@@ -574,6 +581,7 @@ export class CampaignsService {
               id: true,
               email: true,
               role: true,
+              profilePhoto: true,
               employee: {
                 select: {
                   name: true
@@ -601,7 +609,11 @@ export class CampaignsService {
       return {
         ...campaign,
         files: taskFiles,
-        comments: taskComments,
+        comments: taskComments.map(comment => ({
+          ...comment,
+          authorName: comment.author.employee?.name || comment.author.client?.fullName || comment.author.email,
+          authorProfilePhoto: comment.author.profilePhoto
+        })),
         totals: {
           estimatedHours: totalEstimatedHours,
           spentHours: totalSpentHours,
@@ -753,6 +765,7 @@ export class CampaignsService {
               id: true,
               email: true,
               role: true,
+              profilePhoto: true,
               employee: {
                 select: {
                   name: true
@@ -780,7 +793,11 @@ export class CampaignsService {
       return {
         ...campaign,
         files: taskFiles,
-        comments: taskComments,
+        comments: taskComments.map(comment => ({
+          ...comment,
+          authorName: comment.author.employee?.name || comment.author.client?.fullName || comment.author.email,
+          authorProfilePhoto: comment.author.profilePhoto
+        })),
         totals: {
           estimatedHours: totalEstimatedHours,
           spentHours: totalSpentHours,
@@ -1086,12 +1103,12 @@ export class CampaignsService {
       tasks,
       totalTasks: tasks.length,
       tasksByStatus: {
-        backlog: tasks.filter(t => t.status === TaskStatus.BACKLOG).length,
-        inProgress: tasks.filter(t => t.status === TaskStatus.ANDAMENTO).length,
-        inReview: tasks.filter(t => t.status === TaskStatus.REVISAO).length,
-        completed: tasks.filter(t => t.status === TaskStatus.CONCLUIDO).length,
-        overdue: tasks.filter(t => t.status === TaskStatus.ATRASADO).length,
-        archived: tasks.filter(t => t.status === TaskStatus.ARQUIVADO).length
+        backlog: tasks.filter((t: any) => t.status === TaskStatus.BACKLOG).length,
+        inProgress: tasks.filter((t: any) => t.status === TaskStatus.ANDAMENTO).length,
+        inReview: tasks.filter((t: any) => t.status === TaskStatus.REVISAO).length,
+        completed: tasks.filter((t: any) => t.status === TaskStatus.CONCLUIDO).length,
+        overdue: tasks.filter((t: any) => t.status === TaskStatus.ATRASADO).length,
+        archived: tasks.filter((t: any) => t.status === TaskStatus.ARQUIVADO).length
       }
     };
   }
@@ -1246,7 +1263,6 @@ export class CampaignsService {
       fileName: string;
       fileUrl: string;
       fileType: string;
-      fileSize: number;
       description?: string;
     }>,
     uploadedByEmployeeId: string
@@ -1292,7 +1308,6 @@ export class CampaignsService {
         fileName: file.fileName,
         fileUrl: file.fileUrl,
         fileType: TaskFileType.DELIVERABLE, // Default to DELIVERABLE for employee uploads
-        fileSize: file.fileSize,
         description: file.description,
         uploadedBy: employee.userId
       }))
@@ -1347,27 +1362,45 @@ export class CampaignsService {
     // Buscar arquivos da task
     const files = await this.prisma.taskFile.findMany({
       where: { taskId },
-      // include: {
-      //   uploadedBy: {
-      //     select: {
-      //       id: true,
-      //       email: true,
-      //       employee: {
-      //         select: {
-      //           name: true
-      //         }
-      //       }
-      //     }
-      //   }
-      // },
       orderBy: { uploadedAt: 'desc' }
     });
 
+    // Buscar informações dos usuários que fizeram upload
+    const uploaderIds = [...new Set(files.map(file => file.uploadedBy))];
+    const uploaders = await this.prisma.user.findMany({
+      where: { id: { in: uploaderIds } },
+      select: {
+        id: true,
+        email: true,
+        profilePhoto: true,
+        employee: {
+          select: {
+            name: true
+          }
+        },
+        client: {
+          select: {
+            fullName: true
+          }
+        }
+      }
+    });
+
+    // Mapear uploaders para os arquivos
+    const uploaderMap = uploaders.reduce((map, user) => {
+      map[user.id] = user;
+      return map;
+    }, {} as Record<string, any>);
+
+    const filesWithUploaders = files.map(file => ({
+      ...file,
+      uploader: uploaderMap[file.uploadedBy] || null
+    }));
+
     return {
       task,
-      files,
-      totalFiles: files.length,
-      totalSize: files.length // files.reduce((sum, file) => sum + file.fileSize, 0) // fileSize not in schema
+      files: filesWithUploaders,
+      totalFiles: filesWithUploaders.length
     };
   }
 
@@ -1468,21 +1501,59 @@ export class CampaignsService {
       orderBy: { createdAt: 'desc' }
     });
 
+    // Buscar informações dos usuários que fizeram upload dos arquivos
+    const allFileUploaderIds = new Set<string>();
+    tasksWithFiles.forEach(task => {
+      task.files.forEach(file => {
+        allFileUploaderIds.add(file.uploadedBy);
+      });
+    });
+
+    const uploaders = await this.prisma.user.findMany({
+      where: { id: { in: Array.from(allFileUploaderIds) } },
+      select: {
+        id: true,
+        email: true,
+        profilePhoto: true,
+        employee: {
+          select: {
+            name: true
+          }
+        },
+        client: {
+          select: {
+            fullName: true
+          }
+        }
+      }
+    });
+
+    // Mapear uploaders
+    const uploaderMap = uploaders.reduce((map, user) => {
+      map[user.id] = user;
+      return map;
+    }, {} as Record<string, any>);
+
     // Organizar arquivos por task
     const allFiles: any[] = [];
     const filesByTask: any = {};
 
     tasksWithFiles.forEach(task => {
+      const filesWithUploaders = task.files.map(file => ({
+        ...file,
+        uploader: uploaderMap[file.uploadedBy] || null
+      }));
+
       filesByTask[task.id] = {
         taskId: task.id,
         taskTitle: task.title,
         taskStatus: task.status,
-        files: task.files,
-        filesCount: task.files.length
+        files: filesWithUploaders,
+        filesCount: filesWithUploaders.length
       };
 
       // Adicionar arquivos à lista geral
-      task.files.forEach(file => {
+      filesWithUploaders.forEach(file => {
         allFiles.push({
           ...file,
           taskId: task.id,
@@ -1584,8 +1655,43 @@ export class CampaignsService {
       throw new NotFoundException('Task not found in this campaign');
     }
 
+    // Buscar informações dos usuários que fizeram upload dos arquivos
+    const uploaderIds = [...new Set(task.files.map(file => file.uploadedBy))];
+    const uploaders = await this.prisma.user.findMany({
+      where: { id: { in: uploaderIds } },
+      select: {
+        id: true,
+        email: true,
+        profilePhoto: true,
+        employee: {
+          select: {
+            name: true
+          }
+        },
+        client: {
+          select: {
+            fullName: true
+          }
+        }
+      }
+    });
+
+    // Mapear uploaders para os arquivos
+    const uploaderMap = uploaders.reduce((map, user) => {
+      map[user.id] = user;
+      return map;
+    }, {} as Record<string, any>);
+
+    const taskWithFileUploaders = {
+      ...task,
+      files: task.files.map(file => ({
+        ...file,
+        uploader: uploaderMap[file.uploadedBy] || null
+      }))
+    };
+
     return {
-      task,
+      task: taskWithFileUploaders,
       statistics: {
         filesCount: task.files.length,
         commentsCount: task.comments.length,
@@ -1634,6 +1740,7 @@ export class CampaignsService {
             id: true,
             email: true,
             role: true,
+            profilePhoto: true,
             employee: {
               select: {
                 name: true
@@ -1649,9 +1756,16 @@ export class CampaignsService {
       }
     });
 
+    // Transformar comentário para incluir authorName e authorProfilePhoto
+    const transformedComment = {
+      ...comment,
+      authorName: comment.author.employee?.name || comment.author.client?.fullName || comment.author.email,
+      authorProfilePhoto: comment.author.profilePhoto
+    };
+
     return {
       message: 'Comment created successfully',
-      comment
+      comment: transformedComment
     };
   }
 
@@ -1686,6 +1800,7 @@ export class CampaignsService {
               id: true,
               email: true,
               role: true,
+              profilePhoto: true,
               employee: {
                 select: {
                   name: true
@@ -1706,9 +1821,16 @@ export class CampaignsService {
       this.prisma.taskComment.count({ where: { taskId } })
     ]);
 
+    // Transformar comentários para incluir authorName e authorProfilePhoto
+    const transformedComments = comments.map(comment => ({
+      ...comment,
+      authorName: comment.author.employee?.name || comment.author.client?.fullName || comment.author.email,
+      authorProfilePhoto: comment.author.profilePhoto
+    }));
+
     return {
       task,
-      comments,
+      comments: transformedComments,
       pagination: {
         page,
         limit,
@@ -1798,6 +1920,7 @@ export class CampaignsService {
             id: true,
             email: true,
             role: true,
+            profilePhoto: true,
             employee: {
               select: {
                 name: true
@@ -1847,6 +1970,7 @@ export class CampaignsService {
               id: true,
               email: true,
               role: true,
+              profilePhoto: true,
               employee: {
                 select: {
                   name: true
@@ -2055,9 +2179,9 @@ export class CampaignsService {
     const campaignsWithAdminStats = await Promise.all(campaigns.map(async (campaign) => {
       // Estatísticas de tasks
       const totalTasks = campaign.tasks.length;
-      const completedTasks = campaign.tasks.filter(t => t.status === TaskStatus.CONCLUIDO).length;
-      const inProgressTasks = campaign.tasks.filter(t => t.status === TaskStatus.ANDAMENTO).length;
-      const inReviewTasks = campaign.tasks.filter(t => t.status === TaskStatus.REVISAO).length;
+      const completedTasks = campaign.tasks.filter((t: any) => t.status === TaskStatus.CONCLUIDO).length;
+      const inProgressTasks = campaign.tasks.filter((t: any) => t.status === TaskStatus.ANDAMENTO).length;
+      const inReviewTasks = campaign.tasks.filter((t: any) => t.status === TaskStatus.REVISAO).length;
       const overdueTasks = campaign.tasks.filter(t =>
         t.dueDate && new Date(t.dueDate) < new Date() && t.status !== TaskStatus.CONCLUIDO
       ).length;
@@ -2202,11 +2326,10 @@ export class CampaignsService {
       whereConditions.campaignId = query.campaignId;
     }
 
+    // Filtro de status: prioriza status específico ou exclui arquivadas
     if (query.status) {
       whereConditions.status = query.status;
-    }
-
-    if (!query.includeArchived) {
+    } else if (!query.includeArchived) {
       whereConditions.status = {
         not: TaskStatus.ARQUIVADO
       };
@@ -2301,10 +2424,10 @@ export class CampaignsService {
       summary: {
         total,
         byStatus: {
-          backlog: tasks.filter(t => t.status === TaskStatus.BACKLOG).length,
-          inProgress: tasks.filter(t => t.status === TaskStatus.ANDAMENTO).length,
-          completed: tasks.filter(t => t.status === TaskStatus.CONCLUIDO).length,
-          archived: tasks.filter(t => t.status === TaskStatus.ARQUIVADO).length
+          backlog: tasks.filter((t: any) => t.status === TaskStatus.BACKLOG).length,
+          inProgress: tasks.filter((t: any) => t.status === TaskStatus.ANDAMENTO).length,
+          completed: tasks.filter((t: any) => t.status === TaskStatus.CONCLUIDO).length,
+          archived: tasks.filter((t: any) => t.status === TaskStatus.ARQUIVADO).length
         }
       }
     };
@@ -2323,11 +2446,10 @@ export class CampaignsService {
       whereConditions.campaignId = query.campaignId;
     }
 
+    // Filtro de status: prioriza status específico ou exclui arquivadas
     if (query.status) {
       whereConditions.status = query.status;
-    }
-
-    if (!query.includeArchived) {
+    } else if (!query.includeArchived) {
       whereConditions.status = {
         not: TaskStatus.ARQUIVADO
       };
@@ -2436,12 +2558,12 @@ export class CampaignsService {
     const stats = {
       total,
       byStatus: {
-        backlog: tasks.filter(t => t.status === TaskStatus.BACKLOG).length,
-        inProgress: tasks.filter(t => t.status === TaskStatus.ANDAMENTO).length,
-        inReview: tasks.filter(t => t.status === TaskStatus.REVISAO).length,
-        completed: tasks.filter(t => t.status === TaskStatus.CONCLUIDO).length,
-        overdue: tasks.filter(t => t.status === TaskStatus.ATRASADO).length,
-        archived: tasks.filter(t => t.status === TaskStatus.ARQUIVADO).length
+        backlog: tasks.filter((t: any) => t.status === TaskStatus.BACKLOG).length,
+        inProgress: tasks.filter((t: any) => t.status === TaskStatus.ANDAMENTO).length,
+        inReview: tasks.filter((t: any) => t.status === TaskStatus.REVISAO).length,
+        completed: tasks.filter((t: any) => t.status === TaskStatus.CONCLUIDO).length,
+        overdue: tasks.filter((t: any) => t.status === TaskStatus.ATRASADO).length,
+        archived: tasks.filter((t: any) => t.status === TaskStatus.ARQUIVADO).length
       },
       totalFiles: tasks.reduce((sum, task) => sum + task.files.length, 0),
       totalComments: tasks.reduce((sum, task) => sum + task.comments.length, 0),
@@ -2476,11 +2598,10 @@ export class CampaignsService {
       whereConditions.campaignId = query.campaignId;
     }
 
+    // Filtro de status: prioriza status específico ou exclui arquivadas
     if (query.status) {
       whereConditions.status = query.status;
-    }
-
-    if (!query.includeArchived) {
+    } else if (!query.includeArchived) {
       whereConditions.status = {
         not: TaskStatus.ARQUIVADO
       };
@@ -2568,10 +2689,10 @@ export class CampaignsService {
       summary: {
         total,
         byStatus: {
-          backlog: tasks.filter(t => t.status === TaskStatus.BACKLOG).length,
-          inProgress: tasks.filter(t => t.status === TaskStatus.ANDAMENTO).length,
-          completed: tasks.filter(t => t.status === TaskStatus.CONCLUIDO).length,
-          archived: tasks.filter(t => t.status === TaskStatus.ARQUIVADO).length
+          backlog: tasks.filter((t: any) => t.status === TaskStatus.BACKLOG).length,
+          inProgress: tasks.filter((t: any) => t.status === TaskStatus.ANDAMENTO).length,
+          completed: tasks.filter((t: any) => t.status === TaskStatus.CONCLUIDO).length,
+          archived: tasks.filter((t: any) => t.status === TaskStatus.ARQUIVADO).length
         },
         byCampaign: tasks.reduce((acc, task) => {
           if (task.campaignId && task.campaign && !acc[task.campaignId]) {
@@ -2586,6 +2707,663 @@ export class CampaignsService {
           return acc;
         }, {} as Record<string, { campaignName: string; count: number }>)
       }
+    };
+  }
+
+  // =============== ADVANCED TASK LISTING METHODS ===============
+
+  /**
+   * Listar tasks avançado com filtros de campanha e opções de incluir arquivos/comentários
+   */
+  async findAdvancedTasks(query: QueryAdvancedTasksDto, userRole: string, userId: string, employeeId?: string, clientId?: string) {
+    const skip = ((query.page || 1) - 1) * (query.limit || 10);
+
+    const whereConditions: any = {};
+
+    // Filtros baseados no papel do usuário
+    if (userRole === 'EMPLOYEE' && employeeId) {
+      whereConditions.assignees = {
+        some: {
+          employeeId: employeeId
+        }
+      };
+    } else if (userRole === 'CLIENT' && clientId) {
+      whereConditions.clientId = clientId;
+    }
+    // Para ADMIN, sem filtro adicional (vê tudo)
+
+    // Filtros básicos
+    if (query.campaignId) {
+      whereConditions.campaignId = query.campaignId;
+    }
+
+    // Filtro de status da task
+    if (query.status) {
+      whereConditions.status = query.status;
+    } else if (!query.includeArchived) {
+      whereConditions.status = {
+        not: TaskStatus.ARQUIVADO
+      };
+    }
+
+    // Filtro de status da campanha
+    if (query.campaignStatus) {
+      whereConditions.campaign = {
+        status: query.campaignStatus
+      };
+    }
+
+    if (query.search) {
+      whereConditions.OR = [
+        { title: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+        { campaign: { name: { contains: query.search, mode: 'insensitive' } } }
+      ];
+    }
+
+    if (query.startDate || query.endDate) {
+      whereConditions.createdAt = {};
+      if (query.startDate) {
+        whereConditions.createdAt.gte = new Date(query.startDate);
+      }
+      if (query.endDate) {
+        whereConditions.createdAt.lte = new Date(query.endDate);
+      }
+    }
+
+    // Configurar includes baseado nos parâmetros
+    const include: any = {
+      campaign: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          client: userRole === 'ADMIN' ? {
+            select: {
+              id: true,
+              fullName: true,
+              companyName: true
+            }
+          } : undefined
+        }
+      },
+      assignees: {
+        include: {
+          employee: {
+            select: {
+              id: true,
+              name: true,
+              position: true,
+              user: {
+                select: {
+                  profilePhoto: true
+                }
+              }
+            }
+          }
+        }
+      },
+      service: {
+        select: {
+          id: true,
+          name: true,
+          displayName: true
+        }
+      }
+    };
+
+    // Incluir arquivos se solicitado
+    if (query.includeFiles) {
+      include.files = {
+        select: {
+          id: true,
+          fileName: true,
+          fileUrl: true,
+          fileType: true,
+          description: true,
+          uploadedAt: true,
+          uploadedBy: true
+        },
+        orderBy: { uploadedAt: 'desc' },
+        take: 5 // Limitar a 5 arquivos mais recentes
+      };
+    }
+
+    // Incluir comentários se solicitado
+    if (query.includeComments) {
+      include.comments = {
+        include: {
+          author: {
+            select: {
+              id: true,
+              email: true,
+              role: true,
+              profilePhoto: true,
+              employee: {
+                select: {
+                  name: true
+                }
+              },
+              client: {
+                select: {
+                  fullName: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5 // Limitar a 5 comentários mais recentes
+      };
+    }
+
+    const [tasks, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where: whereConditions,
+        include,
+        orderBy: {
+          [query.sortBy || 'createdAt']: query.sortOrder || 'desc'
+        },
+        skip,
+        take: query.limit || 10
+      }),
+      this.prisma.task.count({ where: whereConditions })
+    ]);
+
+    // Se incluir arquivos, buscar dados dos uploaders
+    let tasksWithUploaderInfo = tasks;
+    if (query.includeFiles && tasks.some(task => task.files && task.files.length > 0)) {
+      const allUploaderIds = new Set<string>();
+      tasks.forEach(task => {
+        if (task.files) {
+          task.files.forEach(file => allUploaderIds.add(file.uploadedBy));
+        }
+      });
+
+      const uploaders = await this.prisma.user.findMany({
+        where: { id: { in: Array.from(allUploaderIds) } },
+        select: {
+          id: true,
+          email: true,
+          profilePhoto: true,
+          employee: {
+            select: {
+              name: true
+            }
+          },
+          client: {
+            select: {
+              fullName: true
+            }
+          }
+        }
+      });
+
+      const uploaderMap = uploaders.reduce((map, user) => {
+        map[user.id] = user;
+        return map;
+      }, {} as Record<string, any>);
+
+      tasksWithUploaderInfo = tasks.map((task: any) => ({
+        ...task,
+        files: task.files ? task.files.map((file: any) => ({
+          ...file,
+          uploader: uploaderMap[file.uploadedBy] || null
+        })) : [],
+        comments: task.comments ? task.comments.map((comment: any) => ({
+          ...comment,
+          authorName: comment.author.employee?.name || comment.author.client?.fullName || comment.author.email,
+          authorProfilePhoto: comment.author.profilePhoto
+        })) : []
+      }));
+    } else {
+      // Transformar comentários mesmo quando não há transformação de arquivos
+      tasksWithUploaderInfo = tasks.map((task: any) => ({
+        ...task,
+        comments: task.comments ? task.comments.map((comment: any) => ({
+          ...comment,
+          authorName: comment.author.employee?.name || comment.author.client?.fullName || comment.author.email,
+          authorProfilePhoto: comment.author.profilePhoto
+        })) : []
+      }));
+    }
+
+    const stats = {
+      total,
+      byStatus: {
+        backlog: tasks.filter((t: any) => t.status === TaskStatus.BACKLOG).length,
+        inProgress: tasks.filter((t: any) => t.status === TaskStatus.ANDAMENTO).length,
+        inReview: tasks.filter((t: any) => t.status === TaskStatus.REVISAO).length,
+        completed: tasks.filter((t: any) => t.status === TaskStatus.CONCLUIDO).length,
+        overdue: tasks.filter((t: any) => t.status === TaskStatus.ATRASADO).length,
+        archived: tasks.filter((t: any) => t.status === TaskStatus.ARQUIVADO).length
+      },
+      byCampaignStatus: tasks.reduce((acc, task: any) => {
+        const status = task.campaign?.status;
+        if (status) {
+          acc[status] = (acc[status] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>)
+    };
+
+    return {
+      tasks: tasksWithUploaderInfo,
+      pagination: {
+        page: query.page || 1,
+        limit: query.limit || 10,
+        total,
+        pages: Math.ceil(total / (query.limit || 10))
+      },
+      stats,
+      filters: {
+        includeFiles: query.includeFiles || false,
+        includeComments: query.includeComments || false,
+        includeArchived: query.includeArchived || false
+      }
+    };
+  }
+
+  /**
+   * Ação do cliente na task (aceitar, rejeitar, comentar)
+   */
+  async clientTaskAction(
+    campaignId: string,
+    taskId: string,
+    action: ClientTaskActionDto,
+    clientUserId: string,
+    clientId: string
+  ) {
+    // Verificar se a task existe e pertence ao cliente
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id: taskId,
+        campaignId,
+        clientId
+      },
+      include: {
+        campaign: {
+          select: {
+            id: true,
+            name: true,
+            status: true
+          }
+        }
+      }
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found or you are not authorized to perform this action');
+    }
+
+    const result: any = { task };
+
+    switch (action.action) {
+      case ClientTaskAction.ACCEPT:
+        // Aceitar task = mudar status para CONCLUIDO
+        const acceptedTask = await this.prisma.task.update({
+          where: { id: taskId },
+          data: {
+            status: TaskStatus.CONCLUIDO,
+            progress: 100,
+            completedAt: new Date(),
+            updatedAt: new Date()
+          }
+        });
+
+        // Criar comentário automático de aceitação
+        await this.prisma.taskComment.create({
+          data: {
+            taskId,
+            authorId: clientUserId,
+            content: action.comment || 'Task aceita pelo cliente.'
+          }
+        });
+
+        result.message = 'Task aceita com sucesso';
+        result.action = 'ACCEPTED';
+        result.updatedTask = acceptedTask;
+        break;
+
+      case ClientTaskAction.REJECT:
+        if (!action.comment) {
+          throw new BadRequestException('Comentário é obrigatório ao rejeitar uma task');
+        }
+
+        // Rejeitar = voltar para REVISAO ou ANDAMENTO
+        const rejectedTask = await this.prisma.task.update({
+          where: { id: taskId },
+          data: {
+            status: TaskStatus.REVISAO,
+            updatedAt: new Date()
+          }
+        });
+
+        // Criar comentário de rejeição
+        await this.prisma.taskComment.create({
+          data: {
+            taskId,
+            authorId: clientUserId,
+            content: `Task rejeitada: ${action.comment}${action.reason ? ` - Motivo: ${action.reason}` : ''}`
+          }
+        });
+
+        result.message = 'Task rejeitada. Feedback enviado à equipe';
+        result.action = 'REJECTED';
+        result.updatedTask = rejectedTask;
+        break;
+
+      case ClientTaskAction.COMMENT:
+        if (!action.comment) {
+          throw new BadRequestException('Comentário é obrigatório');
+        }
+
+        // Apenas adicionar comentário
+        const comment = await this.prisma.taskComment.create({
+          data: {
+            taskId,
+            authorId: clientUserId,
+            content: action.comment
+          },
+          include: {
+            author: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+                profilePhoto: true,
+                client: {
+                  select: {
+                    fullName: true
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        // Transformar comentário para incluir authorName e authorProfilePhoto
+        const transformedComment = {
+          ...comment,
+          authorName: comment.author.client?.fullName || comment.author.email,
+          authorProfilePhoto: comment.author.profilePhoto
+        };
+
+        result.message = 'Comentário adicionado com sucesso';
+        result.action = 'COMMENTED';
+        result.comment = transformedComment;
+        break;
+
+      default:
+        throw new BadRequestException('Ação inválida');
+    }
+
+    return result;
+  }
+
+  /**
+   * Listar todas as campanhas arquivadas
+   */
+  async findArchivedCampaigns(query: QueryCampaignsDto, userRole: string, userId: string, employeeId?: string) {
+    const skip = ((query.page || 1) - 1) * (query.limit || 10);
+    const whereConditions: any = {
+      status: 'ARCHIVED'
+    };
+
+    // Filtros baseados no papel do usuário
+    if (userRole === 'EMPLOYEE' && employeeId) {
+      // Employees só veem campanhas onde estão atribuídos
+      whereConditions.assignees = {
+        some: {
+          employeeId
+        }
+      };
+    } else if (userRole === 'CLIENT') {
+      // Clientes só veem suas próprias campanhas
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { client: true }
+      });
+
+      if (!user?.client) {
+        throw new BadRequestException('Client profile not found');
+      }
+
+      whereConditions.clientId = user.client.id;
+    }
+    // ADMIN vê todas as campanhas arquivadas
+
+    // Filtros adicionais
+    if (query.clientId && userRole === 'ADMIN') {
+      whereConditions.clientId = query.clientId;
+    }
+
+    if (query.search) {
+      whereConditions.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } }
+      ];
+    }
+
+
+    const [campaigns, total] = await Promise.all([
+      this.prisma.campaign.findMany({
+        where: whereConditions,
+        include: {
+          client: {
+            select: {
+              id: true,
+              fullName: true,
+              phone: true
+            }
+          },
+          serviceRequest: {
+            select: {
+              id: true,
+              projectName: true,
+              description: true,
+              status: true,
+              creditsCost: true,
+              service: {
+                select: {
+                  id: true,
+                  name: true,
+                  displayName: true,
+                  credits: true
+                }
+              }
+            }
+          },
+          assignees: {
+            include: {
+              employee: {
+                select: {
+                  id: true,
+                  name: true,
+                  position: true,
+                  user: {
+                    select: {
+                      email: true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          tasks: {
+            select: {
+              id: true,
+              status: true,
+              estimatedHours: true,
+              spentHours: true
+            }
+          },
+          _count: {
+            select: {
+              tasks: true,
+              comments: true
+            }
+          }
+        },
+        orderBy: {
+          [query.sortBy || 'updatedAt']: query.sortOrder || 'desc'
+        },
+        skip,
+        take: query.limit || 10
+      }),
+      this.prisma.campaign.count({ where: whereConditions })
+    ]);
+
+    // Calcular estatísticas para cada campanha
+    const campaignsWithStats = campaigns.map((campaign: any) => {
+      const totalTasks = campaign.tasks.length;
+      const completedTasks = campaign.tasks.filter((task: any) => task.status === 'CONCLUIDO').length;
+      const totalEstimatedHours = campaign.tasks.reduce((sum: any, task: any) => sum + (task.estimatedHours || 0), 0);
+      const totalSpentHours = campaign.tasks.reduce((sum: any, task: any) => sum + task.spentHours, 0);
+      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+      return {
+        ...campaign,
+        stats: {
+          totalTasks,
+          completedTasks,
+          pendingTasks: totalTasks - completedTasks,
+          totalEstimatedHours,
+          totalSpentHours,
+          progress,
+          totalComments: campaign._count.comments
+        }
+      };
+    });
+
+    return {
+      campaigns: campaignsWithStats,
+      pagination: {
+        page: query.page || 1,
+        limit: query.limit || 10,
+        total,
+        pages: Math.ceil(total / (query.limit || 10))
+      },
+      summary: {
+        total,
+        totalEstimatedHours: campaignsWithStats.reduce((sum, c) => sum + c.stats.totalEstimatedHours, 0),
+        totalSpentHours: campaignsWithStats.reduce((sum, c) => sum + c.stats.totalSpentHours, 0),
+        totalTasks: campaignsWithStats.reduce((sum, c) => sum + c.stats.totalTasks, 0),
+        totalComments: campaignsWithStats.reduce((sum, c) => sum + c.stats.totalComments, 0)
+      }
+    };
+  }
+
+  /**
+   * Arquivar uma campanha (apenas ADMIN e EMPLOYEE)
+   */
+  async archiveCampaign(campaignId: string, userRole: string, userId: string, employeeId?: string) {
+    // Verificar se a campanha existe
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+      include: {
+        assignees: {
+          include: {
+            employee: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        },
+        client: {
+          select: {
+            id: true,
+            fullName: true
+          }
+        },
+        tasks: {
+          select: {
+            id: true,
+            status: true
+          }
+        }
+      }
+    });
+
+    if (!campaign) {
+      throw new NotFoundException('Campaign not found');
+    }
+
+    // Verificar se já está arquivada
+    if (campaign.status === 'ARCHIVED') {
+      throw new BadRequestException('Campaign is already archived');
+    }
+
+    // Verificar permissões baseadas no role
+    if (userRole === 'EMPLOYEE' && employeeId) {
+      // Employee só pode arquivar campanhas onde está atribuído
+      const isAssigned = campaign.assignees.some(assignee => assignee.employee.id === employeeId);
+      if (!isAssigned) {
+        throw new ForbiddenException('You are not assigned to this campaign');
+      }
+    }
+    // ADMIN pode arquivar qualquer campanha
+
+    // Verificar se há tasks pendentes (opcional - pode ser removido se não for necessário)
+    const pendingTasks = campaign.tasks.filter(task =>
+      task.status !== 'CONCLUIDO' && task.status !== 'ARQUIVADO'
+    );
+
+    // Arquivar a campanha
+    const archivedCampaign = await this.prisma.campaign.update({
+      where: { id: campaignId },
+      data: {
+        status: 'ARCHIVED',
+        updatedAt: new Date()
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            fullName: true
+          }
+        },
+        assignees: {
+          include: {
+            employee: {
+              select: {
+                id: true,
+                name: true,
+                position: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: {
+            tasks: true,
+            comments: true
+          }
+        }
+      }
+    });
+
+    // Retornar informações sobre o arquivamento
+    return {
+      message: 'Campaign archived successfully',
+      campaign: {
+        id: archivedCampaign.id,
+        name: archivedCampaign.name,
+        status: archivedCampaign.status,
+        client: archivedCampaign.client,
+        assignees: archivedCampaign.assignees,
+        archivedAt: archivedCampaign.updatedAt,
+        stats: {
+          totalTasks: archivedCampaign._count.tasks,
+          totalComments: archivedCampaign._count.comments,
+          pendingTasksCount: pendingTasks.length
+        }
+      },
+      warnings: pendingTasks.length > 0 ? [
+        `Campaign archived with ${pendingTasks.length} pending tasks`
+      ] : []
     };
   }
 }

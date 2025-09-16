@@ -24,6 +24,8 @@ import { CreateCampaignTaskDto } from './dto/create-campaign-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { CreateCampaignCommentDto } from './dto/create-campaign-comment.dto';
+import { QueryAdvancedTasksDto } from './dto/query-advanced-tasks.dto';
+import { ClientTaskActionDto } from './dto/client-task-action.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -109,6 +111,45 @@ export class CampaignsController {
     }
 
     return this.campaignsService.findClientCampaigns(user.client.id, query);
+  }
+
+  // =============== ARCHIVED CAMPAIGNS ===============
+
+  @Get('archived')
+  @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CLIENT)
+  @Permissions(Permission.READ_CAMPAIGNS)
+  async getArchivedCampaigns(
+    @Query() query: QueryCampaignsDto,
+    @Request() req: any
+  ) {
+    const user = req.user;
+
+    return this.campaignsService.findArchivedCampaigns(
+      query,
+      user.role,
+      user.id,
+      user.employee?.id
+    );
+  }
+
+  // =============== ARCHIVE CAMPAIGN ===============
+
+  @Patch(':id/archive')
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @Permissions(Permission.WRITE_CAMPAIGNS)
+  @HttpCode(HttpStatus.OK)
+  async archiveCampaign(
+    @Param('id') campaignId: string,
+    @Request() req: any
+  ) {
+    const user = req.user;
+
+    return this.campaignsService.archiveCampaign(
+      campaignId,
+      user.role,
+      user.id,
+      user.employee?.id
+    );
   }
 
   @Get(':id')
@@ -301,7 +342,6 @@ export class CampaignsController {
       fileName: string;
       fileUrl: string;
       fileType: string;
-      fileSize: number;
       description?: string;
     }> = [];
     for (const file of files) {
@@ -311,7 +351,6 @@ export class CampaignsController {
           fileName: file.originalname,
           fileUrl,
           fileType: file.mimetype,
-          fileSize: file.size,
           description: body.description
         });
       } catch (error) {
@@ -523,4 +562,49 @@ export class CampaignsController {
   ) {
     return this.campaignsService.findClientTasks(clientId, query);
   }
+
+  // =============== ADVANCED TASK MANAGEMENT ===============
+
+  @Get('tasks/advanced')
+  @Roles(Role.ADMIN, Role.EMPLOYEE, Role.CLIENT)
+  @Permissions(Permission.READ_TASKS)
+  async getAdvancedTasks(
+    @Query() query: QueryAdvancedTasksDto,
+    @Request() req: any
+  ) {
+    const user = req.user;
+
+    return this.campaignsService.findAdvancedTasks(
+      query,
+      user.role,
+      user.id,
+      user.employee?.id,
+      user.client?.id
+    );
+  }
+
+  @Post(':campaignId/tasks/:taskId/client-action')
+  @Roles(Role.CLIENT)
+  @Permissions(Permission.WRITE_TASKS)
+  async clientTaskAction(
+    @Param('campaignId') campaignId: string,
+    @Param('taskId') taskId: string,
+    @Body() actionDto: ClientTaskActionDto,
+    @Request() req: any
+  ) {
+    const user = req.user;
+
+    if (!user.client?.id) {
+      throw new BadRequestException('Client profile not found');
+    }
+
+    return this.campaignsService.clientTaskAction(
+      campaignId,
+      taskId,
+      actionDto,
+      user.id,
+      user.client.id
+    );
+  }
+
 }
