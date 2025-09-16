@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { AssignEmployeesToCampaignDto } from './dto/assign-employees-to-campaign.dto';
 import { QueryCampaignsDto } from './dto/query-campaigns.dto';
+import { QueryTasksDto } from './dto/query-tasks.dto';
 import { CreateCampaignTaskDto } from './dto/create-campaign-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
@@ -1087,7 +1088,9 @@ export class CampaignsService {
       tasksByStatus: {
         backlog: tasks.filter(t => t.status === TaskStatus.BACKLOG).length,
         inProgress: tasks.filter(t => t.status === TaskStatus.ANDAMENTO).length,
+        inReview: tasks.filter(t => t.status === TaskStatus.REVISAO).length,
         completed: tasks.filter(t => t.status === TaskStatus.CONCLUIDO).length,
+        overdue: tasks.filter(t => t.status === TaskStatus.ATRASADO).length,
         archived: tasks.filter(t => t.status === TaskStatus.ARQUIVADO).length
       }
     };
@@ -2054,6 +2057,7 @@ export class CampaignsService {
       const totalTasks = campaign.tasks.length;
       const completedTasks = campaign.tasks.filter(t => t.status === TaskStatus.CONCLUIDO).length;
       const inProgressTasks = campaign.tasks.filter(t => t.status === TaskStatus.ANDAMENTO).length;
+      const inReviewTasks = campaign.tasks.filter(t => t.status === TaskStatus.REVISAO).length;
       const overdueTasks = campaign.tasks.filter(t =>
         t.dueDate && new Date(t.dueDate) < new Date() && t.status !== TaskStatus.CONCLUIDO
       ).length;
@@ -2098,6 +2102,7 @@ export class CampaignsService {
             total: totalTasks,
             completed: completedTasks,
             inProgress: inProgressTasks,
+            inReview: inReviewTasks,
             overdue: overdueTasks,
             completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
           },
@@ -2172,6 +2177,414 @@ export class CampaignsService {
         limit: query.limit || 20,
         total,
         pages: Math.ceil(total / (query.limit || 20))
+      }
+    };
+  }
+
+  // =============== TASK LISTING METHODS ===============
+
+  /**
+   * Listar todas as tasks de um employee com filtros
+   */
+  async findEmployeeTasks(employeeId: string, query: QueryTasksDto) {
+    const skip = ((query.page || 1) - 1) * (query.limit || 10);
+
+    const whereConditions: any = {
+      assignees: {
+        some: {
+          employeeId: employeeId
+        }
+      }
+    };
+
+    // Filtros
+    if (query.campaignId) {
+      whereConditions.campaignId = query.campaignId;
+    }
+
+    if (query.status) {
+      whereConditions.status = query.status;
+    }
+
+    if (!query.includeArchived) {
+      whereConditions.status = {
+        not: TaskStatus.ARQUIVADO
+      };
+    }
+
+    if (query.search) {
+      whereConditions.OR = [
+        { title: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } }
+      ];
+    }
+
+    if (query.startDate || query.endDate) {
+      whereConditions.createdAt = {};
+      if (query.startDate) {
+        whereConditions.createdAt.gte = new Date(query.startDate);
+      }
+      if (query.endDate) {
+        whereConditions.createdAt.lte = new Date(query.endDate);
+      }
+    }
+
+    const [tasks, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where: whereConditions,
+        include: {
+          campaign: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              client: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  companyName: true
+                }
+              }
+            }
+          },
+          assignees: {
+            include: {
+              employee: {
+                select: {
+                  id: true,
+                  name: true,
+                  position: true
+                }
+              }
+            }
+          },
+          service: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true
+            }
+          },
+          files: {
+            select: {
+              id: true,
+              fileName: true,
+              uploadedAt: true
+            },
+            take: 3
+          },
+          comments: {
+            select: {
+              id: true,
+              createdAt: true
+            },
+            take: 3
+          }
+        },
+        orderBy: {
+          [query.sortBy || 'createdAt']: query.sortOrder || 'desc'
+        },
+        skip,
+        take: query.limit || 10
+      }),
+      this.prisma.task.count({ where: whereConditions })
+    ]);
+
+    return {
+      tasks,
+      pagination: {
+        page: query.page || 1,
+        limit: query.limit || 10,
+        total,
+        pages: Math.ceil(total / (query.limit || 10))
+      },
+      summary: {
+        total,
+        byStatus: {
+          backlog: tasks.filter(t => t.status === TaskStatus.BACKLOG).length,
+          inProgress: tasks.filter(t => t.status === TaskStatus.ANDAMENTO).length,
+          completed: tasks.filter(t => t.status === TaskStatus.CONCLUIDO).length,
+          archived: tasks.filter(t => t.status === TaskStatus.ARQUIVADO).length
+        }
+      }
+    };
+  }
+
+  /**
+   * Listar todas as tasks do sistema para admin com filtros
+   */
+  async findAllTasks(query: QueryTasksDto) {
+    const skip = ((query.page || 1) - 1) * (query.limit || 10);
+
+    const whereConditions: any = {};
+
+    // Filtros
+    if (query.campaignId) {
+      whereConditions.campaignId = query.campaignId;
+    }
+
+    if (query.status) {
+      whereConditions.status = query.status;
+    }
+
+    if (!query.includeArchived) {
+      whereConditions.status = {
+        not: TaskStatus.ARQUIVADO
+      };
+    }
+
+    if (query.search) {
+      whereConditions.OR = [
+        { title: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+        { campaign: { name: { contains: query.search, mode: 'insensitive' } } },
+        { campaign: { client: { fullName: { contains: query.search, mode: 'insensitive' } } } }
+      ];
+    }
+
+    if (query.startDate || query.endDate) {
+      whereConditions.createdAt = {};
+      if (query.startDate) {
+        whereConditions.createdAt.gte = new Date(query.startDate);
+      }
+      if (query.endDate) {
+        whereConditions.createdAt.lte = new Date(query.endDate);
+      }
+    }
+
+    const [tasks, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where: whereConditions,
+        include: {
+          campaign: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              client: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  companyName: true,
+                  user: {
+                    select: {
+                      email: true,
+                      isActive: true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          assignees: {
+            include: {
+              employee: {
+                select: {
+                  id: true,
+                  name: true,
+                  position: true,
+                  department: true,
+                  user: {
+                    select: {
+                      email: true,
+                      isActive: true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          service: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true,
+              credits: true
+            }
+          },
+          files: {
+            select: {
+              id: true,
+              fileName: true,
+              fileType: true,
+              uploadedAt: true
+            }
+          },
+          comments: {
+            select: {
+              id: true,
+              createdAt: true,
+              author: {
+                select: {
+                  id: true,
+                  role: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          [query.sortBy || 'createdAt']: query.sortOrder || 'desc'
+        },
+        skip,
+        take: query.limit || 10
+      }),
+      this.prisma.task.count({ where: whereConditions })
+    ]);
+
+    // Estatísticas gerais para admin
+    const stats = {
+      total,
+      byStatus: {
+        backlog: tasks.filter(t => t.status === TaskStatus.BACKLOG).length,
+        inProgress: tasks.filter(t => t.status === TaskStatus.ANDAMENTO).length,
+        inReview: tasks.filter(t => t.status === TaskStatus.REVISAO).length,
+        completed: tasks.filter(t => t.status === TaskStatus.CONCLUIDO).length,
+        overdue: tasks.filter(t => t.status === TaskStatus.ATRASADO).length,
+        archived: tasks.filter(t => t.status === TaskStatus.ARQUIVADO).length
+      },
+      totalFiles: tasks.reduce((sum, task) => sum + task.files.length, 0),
+      totalComments: tasks.reduce((sum, task) => sum + task.comments.length, 0),
+      uniqueCampaigns: new Set(tasks.map(task => task.campaignId)).size,
+      uniqueEmployees: new Set(tasks.flatMap(task => task.assignees.map(a => a.employeeId))).size
+    };
+
+    return {
+      tasks,
+      pagination: {
+        page: query.page || 1,
+        limit: query.limit || 10,
+        total,
+        pages: Math.ceil(total / (query.limit || 10))
+      },
+      stats
+    };
+  }
+
+  /**
+   * Listar todas as tasks vinculadas a um cliente com filtros
+   */
+  async findClientTasks(clientId: string, query: QueryTasksDto) {
+    const skip = ((query.page || 1) - 1) * (query.limit || 10);
+
+    const whereConditions: any = {
+      clientId: clientId
+    };
+
+    // Filtros
+    if (query.campaignId) {
+      whereConditions.campaignId = query.campaignId;
+    }
+
+    if (query.status) {
+      whereConditions.status = query.status;
+    }
+
+    if (!query.includeArchived) {
+      whereConditions.status = {
+        not: TaskStatus.ARQUIVADO
+      };
+    }
+
+    if (query.search) {
+      whereConditions.OR = [
+        { title: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+        { campaign: { name: { contains: query.search, mode: 'insensitive' } } }
+      ];
+    }
+
+    if (query.startDate || query.endDate) {
+      whereConditions.createdAt = {};
+      if (query.startDate) {
+        whereConditions.createdAt.gte = new Date(query.startDate);
+      }
+      if (query.endDate) {
+        whereConditions.createdAt.lte = new Date(query.endDate);
+      }
+    }
+
+    const [tasks, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where: whereConditions,
+        include: {
+          campaign: {
+            select: {
+              id: true,
+              name: true,
+              status: true
+            }
+          },
+          assignees: {
+            include: {
+              employee: {
+                select: {
+                  id: true,
+                  name: true,
+                  position: true
+                }
+              }
+            }
+          },
+          service: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true
+            }
+          },
+          files: {
+            select: {
+              id: true,
+              fileName: true,
+              fileType: true,
+              uploadedAt: true
+            }
+          },
+          comments: {
+            select: {
+              id: true,
+              createdAt: true
+            }
+          }
+        },
+        orderBy: {
+          [query.sortBy || 'createdAt']: query.sortOrder || 'desc'
+        },
+        skip,
+        take: query.limit || 10
+      }),
+      this.prisma.task.count({ where: whereConditions })
+    ]);
+
+    return {
+      tasks,
+      pagination: {
+        page: query.page || 1,
+        limit: query.limit || 10,
+        total,
+        pages: Math.ceil(total / (query.limit || 10))
+      },
+      summary: {
+        total,
+        byStatus: {
+          backlog: tasks.filter(t => t.status === TaskStatus.BACKLOG).length,
+          inProgress: tasks.filter(t => t.status === TaskStatus.ANDAMENTO).length,
+          completed: tasks.filter(t => t.status === TaskStatus.CONCLUIDO).length,
+          archived: tasks.filter(t => t.status === TaskStatus.ARQUIVADO).length
+        },
+        byCampaign: tasks.reduce((acc, task) => {
+          if (task.campaignId && task.campaign && !acc[task.campaignId]) {
+            acc[task.campaignId] = {
+              campaignName: task.campaign.name,
+              count: 0
+            };
+          }
+          if (task.campaignId && acc[task.campaignId]) {
+            acc[task.campaignId].count++;
+          }
+          return acc;
+        }, {} as Record<string, { campaignName: string; count: number }>)
       }
     };
   }

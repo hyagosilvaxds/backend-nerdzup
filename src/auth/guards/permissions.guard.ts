@@ -34,9 +34,34 @@ export class PermissionsGuard implements CanActivate {
     }
 
     // Check if user is employee and has required permissions
-    if (user.role === 'EMPLOYEE' && user.employee) {
-      const userPermissions = user.employee.permissions.map(p => p.permission);
-      return requiredPermissions.some(permission => userPermissions.includes(permission));
+    if (user.role === 'EMPLOYEE') {
+      // Employees have implicit permissions for basic operations
+      const implicitEmployeePermissions = ['READ_CAMPAIGNS', 'READ_TASKS', 'WRITE_TASKS'];
+
+      // Check if required permission is in implicit permissions
+      const hasImplicitPermission = requiredPermissions.some(permission =>
+        implicitEmployeePermissions.includes(permission)
+      );
+
+      if (hasImplicitPermission) {
+        return true;
+      }
+
+      // Check explicit permissions from database if employee profile exists
+      if (user.employee && user.employee.permissions) {
+        const userPermissions = user.employee.permissions.map((p: any) => p.permission);
+        return requiredPermissions.some(permission => userPermissions.includes(permission));
+      }
+
+      // If no employee profile but role is EMPLOYEE, deny access to non-implicit permissions
+      return false;
+    }
+
+    // Check if user is client and has required permissions
+    if (user.role === 'CLIENT' && user.client) {
+      // Clients have implicit READ permissions for their own data
+      const clientPermissions = ['READ_CAMPAIGNS', 'READ_TASKS'];
+      return requiredPermissions.some(permission => clientPermissions.includes(permission));
     }
 
     return false;

@@ -19,6 +19,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { CampaignsService } from './campaigns.service';
 import { AssignEmployeesToCampaignDto } from './dto/assign-employees-to-campaign.dto';
 import { QueryCampaignsDto } from './dto/query-campaigns.dto';
+import { QueryTasksDto } from './dto/query-tasks.dto';
 import { CreateCampaignTaskDto } from './dto/create-campaign-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
@@ -465,5 +466,61 @@ export class CampaignsController {
   ) {
     const userId = req.user.id;
     return this.campaignsService.deleteCampaignComment(campaignId, commentId, userId);
+  }
+
+  // =============== TASK LISTING ENDPOINTS ===============
+
+  @Get('tasks/my-tasks')
+  @Roles(Role.EMPLOYEE)
+  @Permissions(Permission.READ_TASKS)
+  async getMyTasks(
+    @Query() query: QueryTasksDto,
+    @Request() req: any
+  ) {
+    const user = req.user;
+
+    // Buscar o employee ID baseado no user ID
+    const employee = await this.campaignsService['prisma'].employee.findUnique({
+      where: { userId: user.id }
+    });
+
+    if (!employee) {
+      throw new BadRequestException('Employee profile not found');
+    }
+
+    return this.campaignsService.findEmployeeTasks(employee.id, query);
+  }
+
+  @Get('tasks/admin/all')
+  @Roles(Role.ADMIN)
+  @Permissions(Permission.READ_TASKS)
+  async getAllTasks(@Query() query: QueryTasksDto) {
+    return this.campaignsService.findAllTasks(query);
+  }
+
+  @Get('tasks/client')
+  @Roles(Role.CLIENT)
+  @Permissions(Permission.READ_TASKS)
+  async getMyClientTasks(
+    @Query() query: QueryTasksDto,
+    @Request() req: any
+  ) {
+    const user = req.user;
+
+    if (!user.client?.id) {
+      throw new BadRequestException('Client profile not found');
+    }
+
+    return this.campaignsService.findClientTasks(user.client.id, query);
+  }
+
+  @Get('tasks/client/:clientId')
+  @Roles(Role.ADMIN, Role.EMPLOYEE)
+  @Permissions(Permission.READ_TASKS)
+  async getClientTasks(
+    @Param('clientId') clientId: string,
+    @Query() query: QueryTasksDto
+  ) {
+    return this.campaignsService.findClientTasks(clientId, query);
   }
 }
