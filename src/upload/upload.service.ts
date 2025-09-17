@@ -76,7 +76,7 @@ export class UploadService {
   }
 
   getFileUrl(filePath: string): string {
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 4000}`;
+    const baseUrl = process.env.APP_URL || process.env.BASE_URL || `http://localhost:${process.env.PORT || 4000}`;
     
     // If filePath already starts with /uploads, use it as is
     if (filePath.startsWith('/uploads')) {

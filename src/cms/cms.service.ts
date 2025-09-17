@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
+import { UploadService } from '../upload/upload.service';
 import { UpdateWebsiteConfigDto } from './dto/update-website-config.dto';
 import { CreateServiceCardDto, UpdateServiceCardDto } from './dto/service-card.dto';
 import { CreateProcessStepDto, UpdateProcessStepDto } from './dto/process-step.dto';
@@ -11,7 +12,10 @@ import { CreateFaqItemDto, UpdateFaqItemDto } from './dto/faq-item.dto';
 
 @Injectable()
 export class CmsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private uploadService: UploadService
+  ) {}
 
   // =============== WEBSITE CONFIG ===============
 
@@ -386,7 +390,7 @@ export class CmsService {
   // =============== UPLOAD MANAGEMENT ===============
 
   async uploadLogo(file: Express.Multer.File, updatedBy: string) {
-    const logoUrl = `/uploads/logo/${file.filename}`;
+    const logoUrl = this.uploadService.getFileUrl(`logo/${file.filename}`);
     
     // Get current config to check if there's an existing logo
     const config = await this.getOrCreateWebsiteConfig(updatedBy);
@@ -417,7 +421,7 @@ export class CmsService {
   }
 
   async uploadFavicon(file: Express.Multer.File, updatedBy: string) {
-    const faviconUrl = `/uploads/favicon/${file.filename}`;
+    const faviconUrl = this.uploadService.getFileUrl(`favicon/${file.filename}`);
     
     // Get current config to check if there's an existing favicon
     const config = await this.getOrCreateWebsiteConfig(updatedBy);
@@ -447,7 +451,7 @@ export class CmsService {
   }
 
   async uploadImage(file: Express.Multer.File, updatedBy: string) {
-    const imageUrl = `/uploads/cms/${file.filename}`;
+    const imageUrl = this.uploadService.getFileUrl(`cms/${file.filename}`);
     
     // Return the uploaded image URL - this is a generic upload that doesn't update any specific config
     return {

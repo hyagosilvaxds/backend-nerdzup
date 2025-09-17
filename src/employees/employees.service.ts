@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UploadService } from '../upload/upload.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { UpdateEmployeeProfileDto } from './dto/update-employee-profile.dto';
@@ -11,7 +12,10 @@ import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private uploadService: UploadService
+  ) {}
 
   async create(createEmployeeDto: CreateEmployeeDto, createdById: string) {
     const existingUser = await this.prisma.user.findUnique({
@@ -386,7 +390,7 @@ export class EmployeesService {
     }
 
     // Gerar URL da foto
-    const photoUrl = `/uploads/profile-photos/${file.filename}`;
+    const photoUrl = this.uploadService.getFileUrl(`profile-photos/${file.filename}`);
 
     // Atualizar a foto de perfil do usuário
     const updatedUser = await this.prisma.user.update({

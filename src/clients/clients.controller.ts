@@ -71,8 +71,8 @@ export class ClientsController {
       throw new BadRequestException('Forbidden');
     }
 
-    // Only check permissions for admin/employee roles
-    if (user.role !== Role.CLIENT) {
+    // Only check permissions for admin/employee roles (ADMIN always has access)
+    if (user.role !== Role.CLIENT && user.role !== Role.ADMIN) {
       const hasPermission = user.employee?.permissions?.some(p => p.permission === Permission.READ_CLIENTS);
       if (!hasPermission) {
         throw new BadRequestException('Forbidden');
@@ -99,8 +99,8 @@ export class ClientsController {
       throw new BadRequestException('Forbidden');
     }
 
-    // Only check permissions for admin/employee roles
-    if (user.role !== Role.CLIENT) {
+    // Only check permissions for admin/employee roles (ADMIN always has access)
+    if (user.role !== Role.CLIENT && user.role !== Role.ADMIN) {
       const hasPermission = user.employee?.permissions?.some(p => p.permission === Permission.WRITE_CLIENTS);
       if (!hasPermission) {
         throw new BadRequestException('Forbidden');
@@ -164,8 +164,8 @@ export class ClientsController {
       throw new BadRequestException('Forbidden');
     }
 
-    // Only check permissions for admin/employee roles
-    if (user.role !== Role.CLIENT) {
+    // Only check permissions for admin/employee roles (ADMIN always has access)
+    if (user.role !== Role.CLIENT && user.role !== Role.ADMIN) {
       const hasPermission = user.employee?.permissions?.some(p => p.permission === Permission.READ_CLIENTS);
       if (!hasPermission) {
         throw new BadRequestException('Forbidden');
@@ -205,8 +205,8 @@ export class ClientsController {
       throw new BadRequestException('Forbidden');
     }
 
-    // Only check permissions for admin/employee roles
-    if (user?.role !== Role.CLIENT) {
+    // Only check permissions for admin/employee roles (ADMIN always has access)
+    if (user?.role !== Role.CLIENT && user?.role !== Role.ADMIN) {
       const hasPermission = user.employee?.permissions?.some(p => p.permission === Permission.READ_CLIENTS);
       if (!hasPermission) {
         throw new BadRequestException('Forbidden');
@@ -289,8 +289,8 @@ export class ClientsController {
       throw new BadRequestException('Forbidden');
     }
 
-    // Only check permissions for admin/employee roles
-    if (user.role !== Role.CLIENT) {
+    // Only check permissions for admin/employee roles (ADMIN always has access)
+    if (user.role !== Role.CLIENT && user.role !== Role.ADMIN) {
       const hasPermission = user.employee?.permissions?.some(p => p.permission === Permission.READ_CLIENTS);
       if (!hasPermission) {
         throw new BadRequestException('Forbidden');
