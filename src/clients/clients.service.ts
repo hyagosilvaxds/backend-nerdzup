@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingService } from '../billing/billing.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { UploadService } from '../upload/upload.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -19,7 +20,8 @@ export class ClientsService {
   constructor(
     private prisma: PrismaService,
     private billingService: BillingService,
-    private notificationsService: NotificationsService
+    private notificationsService: NotificationsService,
+    private uploadService: UploadService
   ) {}
 
   async create(createClientDto: CreateClientDto) {
@@ -690,7 +692,7 @@ export class ClientsService {
     }
 
     // Gerar URL da foto
-    const photoUrl = `/uploads/profile-photos/${file.filename}`;
+    const photoUrl = this.uploadService.getFileUrl(`profile-photos/${file.filename}`);
 
     // Atualizar a foto de perfil do usuário
     const updatedUser = await this.prisma.user.update({
@@ -836,7 +838,7 @@ export class ClientsService {
     }
 
     // Gerar URL do arquivo
-    const fileUrl = `/uploads/client-library/${file.filename}`;
+    const fileUrl = this.uploadService.getFileUrl(`client-library/${file.filename}`);
 
     // Criar registro do arquivo na biblioteca
     const libraryFile = await this.prisma.clientLibraryFile.create({
